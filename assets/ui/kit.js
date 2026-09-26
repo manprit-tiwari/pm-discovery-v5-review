@@ -862,11 +862,11 @@ document.addEventListener("keydown", (ev) => {
   const cell = next?.children[col];
   const fields = cell ? Array.from(cell.querySelectorAll(GRID_FIELDS)) : [];
   const target = fields[Math.min(slot, fields.length - 1)];
-  ev.preventDefault();
+  ev.preventDefault(); // also on the first/last row, so ↑/↓ never step a number
   if (!target) return;
   target.focus();
   if (target instanceof HTMLInputElement) target.select();
-});
+}, true); // capture: runs before a number input's own ↑/↓ step
 document.addEventListener("focusin", (ev) => {
   const el = ev.target;
   if (!(el instanceof HTMLInputElement) || !el.closest("[data-grid-nav]") || !["text", "number", "search"].includes(el.type)) return;
