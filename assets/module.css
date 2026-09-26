@@ -972,6 +972,10 @@ video {
   margin-left: 0.625rem;
 }
 
+.ml-3 {
+  margin-left: 0.75rem;
+}
+
 .ml-6 {
   margin-left: 1.5rem;
 }
@@ -1077,6 +1081,10 @@ video {
 
 .inline-table {
   display: inline-table;
+}
+
+.\!grid {
+  display: grid !important;
 }
 
 .grid {
@@ -3043,6 +3051,10 @@ video {
   color: rgb(29 78 216 / var(--tw-text-opacity, 1));
 }
 
+.text-blue-700\/80 {
+  color: rgb(29 78 216 / 0.8);
+}
+
 .text-blue-800 {
   --tw-text-opacity: 1;
   color: rgb(30 64 175 / var(--tw-text-opacity, 1));
@@ -4730,6 +4742,10 @@ video {
 
   .lg\:block {
     display: block;
+  }
+
+  .lg\:inline {
+    display: inline;
   }
 
   .lg\:w-\[42\%\] {

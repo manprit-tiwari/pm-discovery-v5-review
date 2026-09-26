@@ -840,3 +840,37 @@ RSelect.seq = 0;
     if (opt) choose(id, opt);
   };
 })();
+
+// Discovery v6 (Addendum 007 round 2): spreadsheet-style keyboard movement in editable tables.
+// Inside any [data-grid-nav] tbody: ↑/↓ (or Enter / Shift+Enter) move to the same field in the
+// previous/next row; Tab still moves across. Alt+↓ still opens a select's list. Entering a text
+// or number field selects its value so typing replaces it.
+const GRID_FIELDS = "input:not([disabled]):not([type=checkbox]):not([type=hidden]), select:not([disabled]), button:not([disabled])";
+document.addEventListener("keydown", (ev) => {
+  const k = ev.key;
+  if (!(k === "ArrowUp" || k === "ArrowDown" || k === "Enter") || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+  const el = ev.target;
+  const grid = el instanceof Element && el.closest("[data-grid-nav]");
+  if (!grid || !el.matches(GRID_FIELDS) || (k === "Enter" && el.tagName === "BUTTON")) return;
+  const td = el.closest("td");
+  const tr = el.closest("tr");
+  if (!td || !tr) return;
+  const col = Array.from(tr.children).indexOf(td);
+  const slot = Array.from(td.querySelectorAll(GRID_FIELDS)).indexOf(el);
+  const rows = Array.from(grid.querySelectorAll("tr")).filter((r) => r.querySelector(GRID_FIELDS));
+  const next = rows[rows.indexOf(tr) + (k === "ArrowUp" || (k === "Enter" && ev.shiftKey) ? -1 : 1)];
+  const cell = next?.children[col];
+  const fields = cell ? Array.from(cell.querySelectorAll(GRID_FIELDS)) : [];
+  const target = fields[Math.min(slot, fields.length - 1)];
+  ev.preventDefault();
+  if (!target) return;
+  target.focus();
+  if (target instanceof HTMLInputElement) target.select();
+});
+document.addEventListener("focusin", (ev) => {
+  const el = ev.target;
+  if (!(el instanceof HTMLInputElement) || !el.closest("[data-grid-nav]") || !["text", "number", "search"].includes(el.type)) return;
+  const before = el.value;
+  // After a mouse click places the caret — but never once the user has started typing.
+  setTimeout(() => document.activeElement === el && el.value === before && el.select(), 0);
+});
