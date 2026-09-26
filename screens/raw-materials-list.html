@@ -1,0 +1,28 @@
+<!doctype html>
+<!--
+  DISCOVERY v5 SCREEN — Raw Materials (Addendum 006: baseline sync to Development).
+  ProductListShell with catalogueType="RAW-MATERIAL" — the shared port lives in
+  ../assets/ui/product-list.js (+ product-drawer.js, unit-price.js, camera-free kit).
+  Mounted as the host mounts it (storefront-frontend pages/RawMaterialManagement.jsx):
+  showHeading={false}, onNotify → host toasts. Data: sandbox seed (seed.rawMaterials).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raw Materials — Discovery v5</title>
+<link rel="stylesheet" href="../assets/module.css">
+<script src="../assets/pm-core.js"></script>
+<script src="../assets/ui/icons.js"></script>
+<script src="../assets/ui/kit.js"></script>
+<script src="../assets/ui/unit-price.js"></script>
+<script src="../assets/ui/product-drawer.js"></script>
+<script src="../assets/ui/product-list.js"></script>
+<script src="../assets/ui/boot.js"></script>
+</head>
+<body>
+<script>
+Boot.start("rawMaterials", (api, el) => mountProductList(api, Boot.locationId, el, "RAW-MATERIAL", Boot.onNotify));
+</script>
+</body>
+</html>

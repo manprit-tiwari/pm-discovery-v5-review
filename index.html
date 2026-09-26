@@ -1,0 +1,75 @@
+<!doctype html>
+<!--
+  DISCOVERY WIRING — Foodbridge Module Product Management (v5 baseline, Addendum 006)
+  ---------------------------------------------------------------------------------
+  This file is the WIRING only — the hub + transition map. It holds NO screen content;
+  screens live in screens/. v5 reproduces the DEVELOPED module (development/frontend/src)
+  screen for screen, so the next discovery loop starts from what ships.
+  Rules:
+  - HTML/CSS/vanilla JS only. No framework, no build step at view time. assets/pm-core.js
+    and assets/module.css are generated snapshots of the module's own logic/styles
+    (discovery/tools/build-assets.mjs) — regenerate, don't hand-edit.
+  - Open through a static server (seed-data/seed.json is fetched):
+      cd discovery && python -m http.server 4190   →   http://127.0.0.1:4190/
+  - Data: seed-data/seed.json (the sandbox's own fixtures, dumped by tools/dump-seed.mjs).
+  - Parity with the module is checked by tools/parity.mjs against `npm run sandbox`.
+  - Disposable. When accepted, snapshot screens/ + assets/ + index.html + seed-data into
+    versions/v5/. Nothing here is imported by development/.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Product Management Discovery</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 2rem; max-width: 820px; background: #fff; color: #111; }
+    @media (prefers-color-scheme: dark) { body { background: #111827; color: #f3f4f6; } th, td { border-color: #374151 !important; } a { color: #60a5fa !important; } }
+    h1 { font-size: 1.25rem; }
+    h2 { font-size: 1rem; margin-top: 1.75rem; }
+    .note { color: #6b7280; font-size: 0.85rem; }
+    a { color: #06c; }
+    table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+    th, td { border: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+    code { font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <h1>Foodbridge Module Product Management — Discovery v5 (baseline = developed module)</h1>
+  <p class="note">Every screen below is a hand port of the module's React components, mounted the way the host
+  (storefront-frontend) mounts them, driven by the module's own mock API client and the sandbox's seed data.
+  (Review build — see Addendum 006 in the module repo.)</p>
+
+  <h2>Screens</h2>
+  <table>
+    <tr><th>Screen</th><th>Module component</th><th>Host route</th></tr>
+    <tr><td><a href="screens/products-list.html">Products (Finished Goods)</a></td><td><code>ProductListShell</code> catalogueType=DEFAULT</td><td><code>/products</code></td></tr>
+    <tr><td><a href="screens/product-detail.html?id=sb-2">Product detail</a></td><td><code>ProductDetailPage</code></td><td><code>/product/:id</code></td></tr>
+    <tr><td><a href="screens/raw-materials-list.html">Raw Materials</a></td><td><code>ProductListShell</code> catalogueType=RAW-MATERIAL</td><td><code>/raw-materials</code></td></tr>
+    <tr><td><a href="screens/product-detail.html?type=raw&amp;id=rm-1">Raw Material detail</a></td><td><code>ProductDetailPage</code> (RAW-MATERIAL)</td><td><code>/raw-materials/:id</code></td></tr>
+    <tr><td><a href="screens/category-list.html">Product Categories</a></td><td><code>CategoryListShell</code></td><td><code>/categories</code></td></tr>
+    <tr><td><a href="screens/catalogue-list.html">Catalog</a></td><td><code>CatalogueListShell</code></td><td><code>/catalog</code></td></tr>
+    <tr><td><a href="screens/image-gallery.html">Image Gallery</a></td><td><code>ImageDirectoryShell</code></td><td><code>/image-directory</code></td></tr>
+  </table>
+
+  <h2>Transition map (screen level)</h2>
+  <table>
+    <tr><th>From</th><th>Trigger</th><th>To</th></tr>
+    <tr><td>Products / Raw Materials list</td><td>row eye icon, mobile card eye</td><td>Product detail</td></tr>
+    <tr><td>Product detail</td><td>breadcrumb</td><td>Products / Raw Materials list</td></tr>
+    <tr><td>Products / Raw Materials list, Product detail</td><td>Add / Edit</td><td>Product drawer → Unit &amp; Price modal, Add Category modal, Browse Gallery, Take Photo</td></tr>
+    <tr><td>Products list</td><td>Bulk Action</td><td>Recategorize drawer (→ Add Category modal), inline Update prices (→ Unit &amp; Price modal), Assign tags drawer, Delete confirm</td></tr>
+    <tr><td>Products list</td><td>Import / Export</td><td>Import popup → Preview Import modal; Export CSV/Excel; Sync from Zoho → Last Zoho sync modal</td></tr>
+    <tr><td>Catalog list</td><td>Add / Edit</td><td>Catalogue drawer: Basic Info → Select Products → Set Pricing (→ Unit &amp; Price modal)</td></tr>
+    <tr><td>Catalog list</td><td>row Send / Import / Export</td><td>Create Campaign Links modal; pricing CSV preview; CSV download</td></tr>
+    <tr><td>Product Categories list</td><td>Add / Edit / Import</td><td>Category drawer; Import panel → Preview Categories modal</td></tr>
+    <tr><td>Image Gallery</td><td>Add images / card menu / Upload images to products</td><td>Upload drawer, Take photos overlay (→ cropper, My Photos), Add tags / Link product drawers, By-product view → Manage product images drawer</td></tr>
+  </table>
+
+  <h2>Discovery controls</h2>
+  <p class="note">Each screen has a small “Discovery controls (not module UI)” tab on its left edge. It sets the host inputs the
+  module reads — currency, <code>appProp.supportedUnitIndexLevel</code> / <code>priceCalculationUnitIndex</code>,
+  <code>globalSetting…zohoSyncEnabled</code> — and seed scenarios the sandbox seed never produces (catalogues with customers,
+  Zoho sync outcomes). Defaults match the sandbox.</p>
+</body>
+</html>

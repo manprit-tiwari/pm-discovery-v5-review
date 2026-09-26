@@ -1,0 +1,183 @@
+<!doctype html>
+<!--
+  DISCOVERY v5 SCREEN — Product detail (Addendum 006: baseline sync to Development).
+  Ports ProductDetailPage + useProductDetailController (+ ProductDrawer for Edit, shared from
+  ../assets/ui/product-drawer.js). Mounted as the host mounts it
+  (storefront-frontend pages/ProductManagementDetails.jsx): ?id=<productId>, ?type=raw for a
+  Raw Material (catalogueType RAW-MATERIAL, listPath /raw-materials). onNotify → host toasts.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product Detail — Discovery v5</title>
+<link rel="stylesheet" href="../assets/module.css">
+<script src="../assets/pm-core.js"></script>
+<script src="../assets/ui/icons.js"></script>
+<script src="../assets/ui/kit.js"></script>
+<script src="../assets/ui/unit-price.js"></script>
+<script src="../assets/ui/product-drawer.js"></script>
+<script src="../assets/ui/boot.js"></script>
+</head>
+<body>
+<script>
+const params = new URLSearchParams(location.search);
+const isRawRoute = params.get("type") === "raw";
+const catalogueType = isRawRoute ? "RAW-MATERIAL" : "DEFAULT";
+const listPath = isRawRoute ? "raw-materials-list.html" : "products-list.html";
+const productId = params.get("id") || (isRawRoute ? "rm-1" : "sb-2");
+const onNotify = (m, t) => Boot.onNotify(m, t);
+let api, locationId;
+
+// ---- useProductDetailController ------------------------------------------------------------
+const D = { product: null, isLoading: true, error: null, categoryName: undefined, images: [], requiredStock: undefined, isEditOpen: false, selectedImage: 0 };
+let seq = 0;
+async function load() {
+  const my = ++seq;
+  D.isLoading = true;
+  K.update();
+  try {
+    const [product, tree, demand, imgs] = await Promise.all([api.getProduct(productId), api.listCategories(locationId), api.getStockDemand(locationId), api.getProductImages(productId).catch(() => ({ images: [], clearedSlots: [] }))]);
+    if (my !== seq) return;
+    D.product = product;
+    const urlBySlot = new Map(imgs.images.map((i) => [i.slot, i.url]));
+    const cleared = new Set(imgs.clearedSlots);
+    D.images = product ? [0, 1, 2, 3].filter((s) => !cleared.has(s)).map((s) => urlBySlot.get(s) ?? PM.productImage.getProductImageUrl(product.id, s)).filter((u) => u !== undefined) : [];
+    if (product?.categoryReference)
+      for (const root of tree) {
+        if (root.id === product.categoryReference) {
+          D.categoryName = root.name;
+          break;
+        }
+        const child = root.children.find((c) => c.id === product.categoryReference);
+        if (child) {
+          D.categoryName = child.name;
+          break;
+        }
+      }
+    D.requiredStock = product ? demand[product.articleNumber] : undefined;
+    D.isLoading = false;
+    D.error = null;
+  } catch (err) {
+    if (my !== seq) return;
+    D.isLoading = false;
+    D.error = err;
+    onNotify(`Something went wrong: ${err.message}`, "error");
+  }
+  K.update();
+}
+function derived() {
+  const product = D.product;
+  const [secondaryUnit, baseUnit] = (product.measurement ?? "").split("-");
+  const priceMap = product.priceMap ?? {};
+  const offer = product.offerPriceMap ?? {};
+  const priceAt = (u) => offer[u] ?? priceMap[u];
+  const tax = product.tax;
+  const gst = PM.taxUtil.addGstToExclusivePrice;
+  const smallest = (secondaryUnit ? priceAt(secondaryUnit) : undefined) ?? product.price;
+  const resolvedUnit = PM.catalogueDrawer.resolveOrderingUnit(product);
+  const resolved = (resolvedUnit ? priceAt(resolvedUnit) : undefined) ?? (product.price !== undefined ? PM.unitLevel.convertUnitPrice({ price: product.price, boxes: product.boxes, pallets: product.pallets }, 0, PM.unitLevel.getPriceCalculationUnitIndex()) : undefined);
+  const selling = resolved !== undefined ? gst(resolved, tax) : undefined;
+  const packaging = [];
+  if (secondaryUnit && smallest !== undefined) packaging.push({ unit: secondaryUnit, badge: "Smallest Unit", conversion: `1 ${secondaryUnit}`, priceInclTax: gst(smallest, tax) });
+  if (baseUnit) {
+    const baseEx = priceAt(baseUnit) ?? (smallest !== undefined ? smallest * (product.boxes ?? 1) : undefined);
+    if (baseEx !== undefined) packaging.push({ unit: baseUnit, badge: "Base Unit", conversion: `1 ${baseUnit} = ${product.boxes ?? "—"} ${secondaryUnit}`, priceInclTax: gst(baseEx, tax) });
+  }
+  const rawTotal = product.stock !== undefined ? Math.max(0, product.stock) : null;
+  const idx = PM.unitLevel.getPriceCalculationUnitIndex();
+  const at = (q) => PM.unitLevel.resolveStockAtUnitIndex(q, product.boxes, product.pallets, idx);
+  const totalStock = rawTotal !== null ? at(rawTotal) : null;
+  let availableStock, reservedStock;
+  if (rawTotal !== null) {
+    const req = D.requiredStock ?? 0;
+    availableStock = at(Math.max(0, rawTotal - req));
+    reservedStock = at(Math.max(0, Math.min(rawTotal, req)));
+  }
+  return { secondaryUnit, baseUnit, selling, packaging, totalStock, availableStock, reservedStock };
+}
+
+// ---- ProductDetailPage -----------------------------------------------------------------------
+const entityLabel = isRawRoute ? "Raw Material" : "Product";
+K.on["pdp.edit"] = () => {
+  D.isEditOpen = true;
+  openProductDrawer("product-drawer", {
+    apiClient: api, locationId, catalogueType, productId, onNotify,
+    onClose: () => (D.isEditOpen = false),
+    onSaved: (saved) => {
+      onNotify(`${saved.name} updated`, "success");
+      D.isEditOpen = false;
+      load();
+    },
+  });
+};
+K.on["pdp.thumb"] = (i) => (D.selectedImage = Number(i));
+const crumb = (last) => `<ol class="flex min-w-0 items-center gap-2 text-sm text-gray-500"><li><a href="${listPath}" class="font-medium hover:text-green-600">${entityLabel}</a></li>${K.icon("FiChevronRight", "flex-none")}${last}</ol>`;
+const info = (label, value) => `<div class="min-w-0"><p class="text-sm text-gray-500">${label}</p><p class="mt-0.5 truncate font-semibold text-gray-900 dark:text-gray-100" title="${K.esc(value)}">${K.esc(value)}</p></div>`;
+const sectionTitle = (iconName, title) => `<h2 class="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-white"><span class="text-green-500">${K.icon(iconName)}</span>${title}</h2>`;
+const metric = (iconName, value, label, warning) => `<div class="rounded-xl border border-gray-200 px-2 py-4 text-center dark:border-gray-700"><span class="mx-auto flex h-10 w-10 items-center justify-center rounded-full ${warning ? "bg-orange-100 text-orange-500" : "bg-green-100 text-green-600"}">${K.icon(iconName)}</span><p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">${value}</p><p class="text-xs text-gray-500 sm:text-sm">${label}</p></div>`;
+const bar = (w) => `<div class="${w} animate-pulse rounded bg-gray-200 dark:bg-gray-700"></div>`;
+
+function skeleton() {
+  return `<div class="mx-auto w-full max-w-screen-2xl pb-8" data-testid="product-detail-skeleton">
+    <div class="flex flex-col gap-4 pb-5 pt-5 sm:flex-row sm:items-center sm:justify-between">${crumb(`<li class="h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-700"></li>`)}</div>
+    <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-5 lg:p-6"><div class="grid gap-5 sm:gap-6 lg:grid-cols-[230px_minmax(0,1fr)_220px]">
+      <div class="flex h-52 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">${ProductImage({ productId, alt: "", className: "block h-full w-full object-contain" })}</div>
+      <div class="min-w-0 space-y-3">${bar("h-7 w-2/3")}${bar("h-4 w-1/2")}<div class="mt-5 grid grid-cols-2 gap-x-5 gap-y-5 xl:grid-cols-3">${Array.from({ length: 6 }, () => `<div class="space-y-1.5">${bar("h-3 w-16")}${bar("h-4 w-24")}</div>`).join("")}</div></div>
+      <div class="grid grid-cols-2 gap-5 border-t border-gray-200 pt-5 lg:block lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0 dark:border-gray-700"><div class="space-y-1.5">${bar("h-4 w-28")}${bar("h-8 w-20")}</div></div>
+    </div></section>
+    <div class="mt-5 grid gap-5 xl:grid-cols-2">${[0, 1].map(() => `<section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">${bar("h-5 w-40")}<div class="mt-4 h-24 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-900"></div></section>`).join("")}</div>
+  </div>`;
+}
+
+function render() {
+  if (D.error) return `<p role="alert" data-testid="product-detail-error">Something went wrong: ${K.esc(D.error.message)}</p>`;
+  if (D.isLoading) return skeleton();
+  if (!D.product) return `<p role="alert" data-testid="product-detail-not-found">Not found.</p>`;
+  const product = D.product;
+  const d = derived();
+  const name = PM.text.toTitleCase(product.name);
+  const editBtn = (mobile) => `<button type="button" data-testid="${mobile ? "product-detail-edit-btn-mobile" : "product-detail-edit-btn"}" data-on-click="pdp.edit" class="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-green-500 bg-white px-4 text-sm font-semibold text-green-600 transition hover:bg-green-50 dark:bg-gray-800 ${mobile ? "w-full sm:hidden" : "hidden sm:inline-flex"}">${K.icon("FiEdit2")} Edit ${entityLabel}</button>`;
+  const fmt = PM.format;
+  const taxPct = Number(product.tax || 0);
+  return `<div class="mx-auto w-full max-w-screen-2xl pb-8">
+    <div class="flex flex-col gap-4 pb-5 pt-5 sm:flex-row sm:items-center sm:justify-between">${crumb(`<li class="truncate font-semibold text-gray-900 dark:text-gray-100">${K.esc(name)}</li>`)}${editBtn(false)}</div>
+    <div class="space-y-5">
+      <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 sm:p-5 lg:p-6"><div class="grid gap-5 sm:gap-6 lg:grid-cols-[230px_minmax(0,1fr)_220px]">
+        <div><div class="flex h-52 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">${ProductImage({ productId: product.id, directUrl: D.images[D.selectedImage], alt: name, className: "block h-full w-full object-contain" })}</div>
+          ${D.images.length > 1 ? `<div class="mt-3 flex h-12 items-stretch gap-2 overflow-hidden">${D.images.map((img, i) => `<button data-key="${K.esc(img)}-${i}" type="button" data-testid="product-detail-thumbnail-${i}" data-on-click="pdp.thumb|${i}" class="h-12 min-w-0 flex-1 overflow-hidden rounded-lg border-2 bg-gray-50 p-1 ${D.selectedImage === i ? "border-green-500" : "border-gray-200"}">${ProductImage({ productId: product.id, directUrl: img, alt: "", className: "block h-full w-full object-contain" })}</button>`).join("")}</div>` : ""}</div>
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-3"><h1 class="text-2xl font-bold text-gray-900 dark:text-white">${K.esc(name)}</h1><span class="rounded-full px-3 py-1 text-xs font-semibold ${product.status === "ACTIVE" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}">${product.status === "ACTIVE" ? "Active" : "Hidden"}</span></div>
+          ${product.description ? `<p class="mt-2 line-clamp-2 text-sm text-gray-500">${K.esc(product.description)}</p>` : ""}
+          <div class="mt-4 sm:hidden">${editBtn(true)}</div>
+          <div class="mt-5 grid grid-cols-2 gap-x-5 gap-y-5 xl:grid-cols-3">${info("SKU / Article No.", product.articleNumber)}${info("Category", D.categoryName ?? "—")}${info("Brand", product.brand ?? "—")}${info("Unit (Smallest)", d.secondaryUnit || "—")}${info("Base Unit", d.baseUnit || "—")}${info("Barcode", product.barcode ?? "—")}</div>
+          ${product.tags?.length ? `<div class="mt-5 flex flex-wrap gap-2">${product.tags.map((t) => `<span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">${K.esc(t)}</span>`).join("")}</div>` : ""}
+        </div>
+        <div class="grid grid-cols-2 gap-5 border-t border-gray-200 pt-5 lg:block lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0 dark:border-gray-700">
+          <div><p class="text-sm text-gray-500">${isRawRoute ? "Purchasing Price (Incl. tax)" : "Selling Price (Incl. tax)"}</p><p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white lg:text-3xl">${d.selling !== undefined ? K.esc(fmt.formatPrice(d.selling)) : "—"}</p></div>
+          <div class="border-l border-gray-200 pl-5 lg:mt-6 lg:border-l-0 lg:pl-0 dark:border-gray-700"><p class="text-sm text-gray-500">Tax Rate</p><p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">${taxPct}%</p></div>
+        </div>
+      </div></section>
+      <div class="grid gap-5 xl:grid-cols-2">
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">${sectionTitle("FiLayers", "Packaging &amp; Units")}
+          <div class="mt-4 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700"><div class="grid grid-cols-[1fr_1.35fr_auto] gap-3 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-gray-900"><span>Unit</span><span>Conversion</span><span>Price (${taxPct}% Incl. tax)</span></div>
+            ${d.packaging.length === 0 ? `<p class="px-4 py-3 text-sm text-gray-400">No unit configured yet.</p>` : ""}
+            ${d.packaging.map((r) => `<div data-key="${r.badge}" class="grid grid-cols-[1fr_1.35fr_auto] items-center gap-3 border-t border-gray-200 px-4 py-3 text-sm dark:border-gray-700"><div class="font-semibold text-gray-900 dark:text-white">${K.esc(r.unit)}<span class="ml-2 hidden rounded bg-green-100 px-2 py-1 text-xs text-green-700 sm:inline">${r.badge}</span></div><span class="text-gray-600 dark:text-gray-300">${K.esc(r.conversion)}</span><span class="font-semibold text-gray-900 dark:text-white">${K.esc(fmt.formatPrice(r.priceInclTax))}</span></div>`).join("")}
+          </div></section>
+        <section class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">${sectionTitle("FiPackage", "Inventory Summary")}
+          <div class="mt-4 grid gap-3 ${isRawRoute ? "grid-cols-1" : "grid-cols-3"}">${isRawRoute ? metric("FiCheckCircle", d.availableStock ?? 0, "Available Stock") : metric("FiBox", d.totalStock ?? 0, "Total Stock") + metric("FiCheckCircle", d.availableStock ?? 0, "Available Stock") + metric("FiLock", d.reservedStock ?? 0, "Stock Reserved In Order", true)}</div></section>
+      </div>
+    </div>
+    ${D.isEditOpen ? ProductDrawer("product-drawer") : ""}
+  </div>`;
+}
+
+Boot.start(isRawRoute ? "rawMaterials" : "products", (client, el) => {
+  api = client;
+  locationId = Boot.locationId;
+  K.app(el, render);
+  load();
+});
+</script>
+</body>
+</html>
