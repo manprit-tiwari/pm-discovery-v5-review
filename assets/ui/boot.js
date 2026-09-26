@@ -15,7 +15,9 @@ const Boot = {
     const res = await fetch("../seed-data/seed.json");
     this.seed = await res.json();
     this.locationId = this.seed.locationId;
-    const client = PM.createMockApiClient(Scenario.apply(seedKey, structuredClone(this.seed[seedKey])));
+    // v6 (Addendum 007): Finished Goods also reads catalogues (selection by catalogue, impact).
+    const seed = seedKey === "finishedGoods" ? { ...this.seed.products, catalogues: this.seed.catalogues.catalogues } : this.seed[seedKey];
+    const client = PM.createMockApiClient(Scenario.apply(seedKey, structuredClone(seed)));
     document.body.className = "bg-gray-50";
     document.body.innerHTML = `<main class="flex-1 overflow-y-auto overflow-x-hidden min-h-0"><div id="screen" class="w-full mx-auto px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4"></div></main>`;
     DiscoveryPanel.mount();
@@ -36,7 +38,7 @@ const Scenario = {
   },
   apply(seedKey, seed) {
     const sc = this.get();
-    if (seedKey === "catalogues" && sc.campaignRecipients) {
+    if ((seedKey === "catalogues" || seedKey === "finishedGoods") && sc.campaignRecipients) {
       seed.campaignRecipients = Object.fromEntries(
         seed.catalogues.map((c) => [c.id, Array.from({ length: 6 }, (_, i) => ({ id: `${c.id}-cust-${i + 1}`, name: `Customer ${i + 1}`, phone: `98765 4321${i}` }))]),
       );
@@ -71,7 +73,7 @@ const DiscoveryPanel = {
     PM.format.configureCurrency(localStorage.getItem("discovery.currency") || undefined);
     const box = document.createElement("details");
     box.id = "discovery-panel";
-    box.style.cssText = "position:fixed;left:0;top:45%;z-index:30000;font:12px system-ui;background:#111827;color:#f9fafb;border-radius:8px;padding:6px 10px;max-width:320px;opacity:.9";
+    box.style.cssText = "position:fixed;left:0;bottom:96px;z-index:30000;font:12px system-ui;background:#111827;color:#f9fafb;border-radius:8px;padding:6px 10px;max-width:320px;opacity:.9";
     const opt = (v, cur) => `<option value="${v}"${String(cur ?? "") === v ? " selected" : ""}>${v === "" ? "unset" : v}</option>`;
     box.innerHTML = `<summary style="cursor:pointer">Discovery controls (not module UI)</summary>
       <div style="display:grid;gap:6px;margin-top:8px">

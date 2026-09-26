@@ -1,6 +1,9 @@
 <!doctype html>
 <!--
-  DISCOVERY v5 SCREEN — Products (Addendum 006: baseline sync to Development).
+  DISCOVERY v6 SCREEN — Products / Finished Goods (Addendum 007: operational workspace).
+  v6 layers ../assets/ui/fg-workspace.js (search, filters, selection engine, bulk actions with
+  preview / impact / undo, Needs Attention, Quick Add) onto the v5 shell below.
+  v5 notes (Addendum 006: baseline sync to Development):
   ProductListShell with catalogueType="DEFAULT" — the shared port lives in
   ../assets/ui/product-list.js (+ product-drawer.js, unit-price.js, camera-free kit).
   Mounted as the host mounts it (storefront-frontend pages/ProductManagement.jsx):
@@ -10,7 +13,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Products — Discovery v5</title>
+<title>Products — Discovery v6</title>
 <link rel="stylesheet" href="../assets/module.css">
 <script src="../assets/pm-core.js"></script>
 <script src="../assets/ui/icons.js"></script>
@@ -18,11 +21,12 @@
 <script src="../assets/ui/unit-price.js"></script>
 <script src="../assets/ui/product-drawer.js"></script>
 <script src="../assets/ui/product-list.js"></script>
+<script src="../assets/ui/fg-workspace.js"></script>
 <script src="../assets/ui/boot.js"></script>
 </head>
 <body>
 <script>
-Boot.start("products", (api, el) => mountProductList(api, Boot.locationId, el, "DEFAULT", Boot.onNotify));
+Boot.start("finishedGoods", (api, el) => mountProductList(api, Boot.locationId, el, "DEFAULT", Boot.onNotify, createFinishedGoodsWorkspace));
 </script>
 </body>
 </html>

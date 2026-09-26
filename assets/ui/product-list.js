@@ -4,9 +4,11 @@
 // MobileCategoryChips, ExportDropdown, ImportButton, ImportModal, ZohoSyncResultsModal,
 // RecategorizeDrawer, TagAssignmentDrawer (+ ProductDrawer/AddCategoryModal in product-drawer.js).
 // One shell for both screens — catalogueType "DEFAULT" (Products) or "RAW-MATERIAL".
+// v6 (Addendum 007): Products passes `workspace` (fg-workspace.js), which takes over search,
+// filters, selection, bulk actions and the desktop table; everything else here is v5 as-is.
 
 const PL_PAGE_SIZE = 20;
-function mountProductList(api, locationId, el, catalogueType, onNotify) {
+function mountProductList(api, locationId, el, catalogueType, onNotify, workspace) {
   const isRaw = catalogueType === "RAW-MATERIAL";
   const title = isRaw ? "Raw Materials" : "Products";
   const detailPath = (id) => (isRaw ? `product-detail.html?type=raw&id=${encodeURIComponent(id)}` : `product-detail.html?id=${encodeURIComponent(id)}`);
@@ -19,8 +21,21 @@ function mountProductList(api, locationId, el, catalogueType, onNotify) {
   let seq = 0;
   async function load() {
     const my = ++seq;
-    S.isLoading = true;
+    S.isLoading = !fg || S.items.length === 0;
     K.update();
+    if (fg) {
+      try {
+        await fg.load();
+        if (my !== seq) return;
+        S.isLoading = false;
+        S.error = null;
+      } catch (err) {
+        S.isLoading = false;
+        S.error = err;
+        onNotify(`Something went wrong: ${err.message}`, "error");
+      }
+      return K.update();
+    }
     try {
       const [list, tree, demand, tags] = await Promise.all([
         api.listProducts(locationId, { catalogueType, category: S.category, title: S.searchInput || undefined, tag: S.tag, page: S.currentPage, limit: PL_PAGE_SIZE }),
@@ -275,6 +290,7 @@ function mountProductList(api, locationId, el, catalogueType, onNotify) {
   H("tagAll", () => ((S.tag = undefined), (S.currentPage = 1), load()));
   H("checkAll", (_, ev) => (BE.isActive ? bulkEdit.selectAll(ev.target.checked) : (S.checkedIds = S.checkedIds.length === S.items.length ? [] : S.items.map((i) => i.id))));
   H("check", (id, ev) => {
+    if (fg && !BE.isActive) return fg.toggle(id);
     if (BE.isActive) {
       const p = S.products.find((x) => x.id === id);
       if (p) return bulkEdit.toggleRow(p, ev.target.checked);
@@ -287,7 +303,7 @@ function mountProductList(api, locationId, el, catalogueType, onNotify) {
     const i = arg.indexOf("|");
     S.pendingDelete = { kind: "single", id: arg.slice(0, i), name: arg.slice(i + 1) };
   });
-  H("beCancel", () => bulkEdit.cancel());
+  H("beCancel", () => (bulkEdit.cancel(), fg && fg.view()));
   H("beSave", async () => {
     try {
       const r = await bulkEdit.save();
@@ -324,6 +340,18 @@ function mountProductList(api, locationId, el, catalogueType, onNotify) {
       },
     });
   }
+
+  const fg = workspace
+    ? workspace({
+        api, locationId, onNotify, S, refresh, openDrawer, detailPath,
+        isInlineEditing: () => BE.isActive,
+        requestBulkDelete: (ids) => (S.pendingDelete = { kind: "bulk", ids }),
+        beginInlineEdit: (products, items) => {
+          Object.assign(S, { products, items, totalDoc: products.length, currentPage: 1 });
+          bulkEdit.begin(products.map((p) => p.id));
+        },
+      })
+    : null;
 
   // ---- ExportDropdown -------------------------------------------------------------------
   async function handleExport(format) {
@@ -691,7 +719,7 @@ function mountProductList(api, locationId, el, catalogueType, onNotify) {
       const cat = item.categoryLabel ? tc(item.categoryLabel) : undefined;
       return `<article data-key="${item.id}" data-testid="product-card-${item.id}" class="relative overflow-hidden rounded-xl border px-2.5 pb-0 shadow-sm dark:border-gray-700 dark:bg-gray-800 border-gray-200 bg-white">
         <span data-testid="product-card-stock-status-${item.id}" class="absolute right-2.5 top-2.5 z-10 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-1 text-[9px] font-medium ${st.c}"><span class="h-1.5 w-1.5 rounded-full bg-current"></span>${st.label}</span>
-        <div class="grid min-h-[86px] grid-cols-[18px_70px_minmax(0,1fr)] gap-2 py-2"><div class="flex items-start pt-0.5"><input type="checkbox"${K.attr("checked", S.checkedIds.includes(item.id))} data-on-change="pl.check|${item.id}" aria-label="Select ${K.esc(item.displayName)}" class="h-4 w-4 rounded border-gray-400 accent-emerald-600 dark:border-gray-500"></div>
+        <div class="grid min-h-[86px] grid-cols-[18px_70px_minmax(0,1fr)] gap-2 py-2"><div class="flex items-start pt-0.5"><input type="checkbox"${K.attr("checked", fg ? fg.isSelected(item.id) : S.checkedIds.includes(item.id))} data-on-change="pl.check|${item.id}" aria-label="Select ${K.esc(item.displayName)}" class="h-4 w-4 rounded border-gray-400 accent-emerald-600 dark:border-gray-500"></div>
           <div class="flex items-center"><div class="h-[70px] w-[70px] overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-900">${ProductImage({ productId: item.id, directUrl: item.thumbnailUrl, alt: name || "Product image", className: "block h-full w-full rounded-lg object-cover" })}</div></div>
           <div class="flex min-w-0 flex-col justify-center py-0.5 pr-[96px]"><h3 data-testid="product-card-name-${item.id}" class="truncate text-[13px] font-semibold leading-[18px] text-gray-900 dark:text-gray-100">${K.esc(name)}</h3><p class="truncate text-[10px] leading-[14px] text-gray-400"><span data-testid="product-card-article-no-${item.id}">${K.esc(item.articleNumberLabel)}</span></p>${cat ? `<span data-testid="product-card-category-${item.id}" class="mt-0.5 inline-block max-w-full self-start truncate rounded bg-emerald-50 px-1 py-0.5 text-[9px] font-medium leading-3 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300">${K.esc(cat)}</span>` : ""}</div></div>
         ${item.price !== undefined ? `<div class="absolute bottom-[48px] right-2.5 text-right"><p data-testid="product-card-price-${item.id}" class="whitespace-nowrap text-[14px] font-bold leading-[17px] text-gray-900 dark:text-gray-100">${K.esc(fmt.formatPrice(item.price))}</p>${taxLabel ? `<p data-testid="product-card-tax-${item.id}" class="whitespace-nowrap text-[9px] leading-3 text-gray-400">${taxLabel}</p>` : ""}</div>` : ""}
@@ -759,20 +787,20 @@ function mountProductList(api, locationId, el, catalogueType, onNotify) {
         ${ExportDropdown("products-export", false)}
         ${ImportButton("products-import", false)}
         ${zBusy ? `<span data-testid="products-zoho-syncing" class="inline-flex h-10 items-center text-sm text-gray-500 dark:text-gray-400">${K.icon("FiRefreshCw", "mr-2 h-4 w-4 animate-spin text-emerald-500")}Syncing…</span>` : ""}
-        ${BulkActionDropdown("products-bulk", bulkProps({ extraActions: extra(false), updateLabel: "Recategorize products", testIdPrefix: "products-bulk-action" }))}
-        <button type="button" data-testid="products-add-btn" data-on-click="pl.add" class="align-bottom inline-flex items-center justify-center cursor-pointer leading-5 transition-colors duration-150 font-medium focus:outline-none px-4 py-2 rounded-md text-sm text-white bg-green-600 border border-transparent hover:bg-green-700 h-10 w-full sm:w-auto sm:ml-auto">${K.icon("FiPlus", "mr-2")}Add ${isRaw ? "Raw Material" : "Product"}</button>
+        ${fg ? fg.bulkButton(false) : BulkActionDropdown("products-bulk", bulkProps({ extraActions: extra(false), updateLabel: "Recategorize products", testIdPrefix: "products-bulk-action" }))}
+        <button type="button" data-testid="products-add-btn" data-on-click="${fg ? "fg.add" : "pl.add"}" class="align-bottom inline-flex items-center justify-center cursor-pointer leading-5 transition-colors duration-150 font-medium focus:outline-none px-4 py-2 rounded-md text-sm text-white bg-green-600 border border-transparent hover:bg-green-700 h-10 w-full sm:w-auto sm:ml-auto">${K.icon("FiPlus", "mr-2")}Add ${isRaw ? "Raw Material" : "Product"}</button>
       </div></div>
-      <div class="min-w-0 rounded-lg overflow-hidden ring-1 ring-black/5 dark:bg-gray-800 mb-4"><div class="p-4 flex flex-col md:flex-row gap-2">
+      ${fg ? fg.renderFinder() : `      <div class="min-w-0 rounded-lg overflow-hidden ring-1 ring-black/5 dark:bg-gray-800 mb-4"><div class="p-4 flex flex-col md:flex-row gap-2">
         <div class="flex-1" style="position:relative">${K.icon("Search", "pointer-events-none text-gray-400").replace("<svg", '<svg style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);width:1rem;height:1rem"')}<input type="search" data-testid="products-search-input" placeholder="Search ${title}" value="${K.esc(S.searchDraft)}" data-on-input="pl.search" class="block w-full h-10 border border-gray-200 bg-white pl-9 pr-9 py-1 text-sm focus:outline-none dark:text-gray-300 leading-5 rounded-md focus:bg-white dark:focus:bg-gray-700"></div>
         <div class="hidden md:block md:w-[192px]"><select data-testid="products-category-filter" data-on-change="pl.category" class="block w-full h-10 border border-gray-200 bg-white px-2 py-1 text-sm dark:text-gray-300 focus:outline-none rounded-md focus:bg-white dark:focus:bg-gray-700"><option value=""${K.attr("selected", !S.category)}>All categories</option>${leaves.map((l) => `<option value="${l.id}"${K.attr("selected", S.category === l.id)}>${K.esc(l.label)}</option>`).join("")}</select></div>
       </div>
       <div class="px-4">${leaves.length === 0 ? "" : `<div class="md:hidden -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-2" aria-label="Filter products by category"><button type="button" data-testid="products-category-chip-all" data-status="${!S.category ? "selected" : "unselected"}" data-on-click="pl.chip|" class="shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition-colors ${!S.category ? "border-emerald-600 bg-emerald-600 text-white" : "border-gray-200 bg-white text-gray-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"}">All</button>${leaves.map((l) => `<button type="button" data-testid="products-category-chip-${l.id}" data-status="${S.category === l.id ? "selected" : "unselected"}" data-on-click="pl.chip|${l.id}" class="shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition-colors ${S.category === l.id ? "border-emerald-600 bg-emerald-600 text-white" : "border-gray-200 bg-white text-gray-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"}">${K.esc(l.label)}</button>`).join("")}</div>`}</div>
       </div>
-      ${!isRaw && !(S.availableTags.length === 0 && !S.tag) ? `<div class="flex flex-wrap gap-2 mb-4" data-testid="tag-filter-chips"><button type="button" data-on-click="pl.tagAll" data-testid="tag-filter-chip-all" class="${chip(!S.tag)}">All</button>${S.availableTags.map((t) => `<button type="button" data-on-click="pl.tag|${K.esc(t)}" data-testid="tag-filter-chip-${K.esc(t)}" class="inline-flex items-center gap-1 ${chip(S.tag === t)}">${K.icon("Tag", "h-3 w-3")}${K.esc(t)}</button>`).join("")}</div>` : ""}
+      ${!isRaw && !(S.availableTags.length === 0 && !S.tag) ? `<div class="flex flex-wrap gap-2 mb-4" data-testid="tag-filter-chips"><button type="button" data-on-click="pl.tagAll" data-testid="tag-filter-chip-all" class="${chip(!S.tag)}">All</button>${S.availableTags.map((t) => `<button type="button" data-on-click="pl.tag|${K.esc(t)}" data-testid="tag-filter-chip-${K.esc(t)}" class="inline-flex items-center gap-1 ${chip(S.tag === t)}">${K.icon("Tag", "h-3 w-3")}${K.esc(t)}</button>`).join("")}</div>` : ""}`}
       ${BE.isActive ? `<div data-testid="bulk-edit-panel" class="mb-4 flex flex-nowrap items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 dark:border-blue-900/40 dark:bg-blue-900/10"><span class="mr-auto min-w-0 truncate text-sm font-semibold text-blue-800 dark:text-blue-300">Editing ${Object.keys(BE.drafts).length} product${Object.keys(BE.drafts).length === 1 ? "" : "s"}</span>
         <button type="button" data-on-click="pl.beCancel"${K.attr("disabled", BE.isSaving)} data-testid="bulk-edit-cancel-btn" class="align-bottom inline-flex items-center justify-center cursor-pointer leading-5 transition-colors duration-150 font-medium focus:outline-none px-3 py-1.5 rounded-md text-sm text-gray-600 border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50">Cancel</button>
         <button type="button" data-on-click="pl.beSave"${K.attr("disabled", BE.isSaving || Object.keys(BE.drafts).length === 0)} data-testid="bulk-edit-save-btn" class="align-bottom inline-flex items-center justify-center cursor-pointer leading-5 transition-colors duration-150 font-medium focus:outline-none px-3 py-1.5 rounded-md text-sm text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">${BE.isSaving ? "Saving…" : "Save changes"}</button></div>` : ""}
-      ${S.isLoading ? `<p class="py-8 text-center text-sm text-gray-500" data-testid="products-list-loading">Loading…</p>` : `
+      ${S.isLoading ? `<p class="py-8 text-center text-sm text-gray-500" data-testid="products-list-loading">Loading…</p>` : fg && !BE.isActive ? `${fg.renderTable()}${mobileCards(false)}${S.items.length === 0 ? `<p class="md:hidden py-8 text-center text-sm text-gray-500">No products found.</p>` : ""}` : `
         <div class="hidden md:block w-full overflow-hidden ring-1 ring-black/5 rounded-lg"><table class="w-full" data-testid="products-table">
           <thead class="text-sm font-medium tracking-wide text-left text-zinc-500 uppercase border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800"><tr>
             <th class="px-4 py-2"><input type="checkbox"${K.attr("checked", BE.isActive ? allInEdit : S.items.length > 0 && S.checkedIds.length === S.items.length)} data-on-change="pl.checkAll" aria-label="Select all" class="h-4 w-4 rounded border-gray-400 accent-emerald-600"></th>
@@ -807,11 +835,12 @@ function mountProductList(api, locationId, el, catalogueType, onNotify) {
         }
       } })}
       ${S.drawerOpen ? ProductDrawer("product-drawer") : ""}
+      ${fg ? fg.renderModals() : ""}
       <div class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-[0_-2px_12px_rgba(0,0,0,0.08)]"><div class="flex w-full items-center justify-around px-1 py-2 pb-[env(safe-area-inset-bottom,8px)]">
         <div class="min-w-0 flex-1">${ExportDropdown("products-export-mobile", true)}</div>
         <div class="min-w-0 flex-1">${ImportButton("products-import-mobile", true)}</div>
-        <button type="button" title="Add ${isRaw ? "Raw Material" : "Product"}" data-testid="products-add-btn-mobile" data-on-click="pl.add" class="group flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 text-emerald-700 hover:bg-emerald-50 transition"><span class="rounded-lg bg-emerald-600 px-3 py-1 text-white">${K.icon("FiPlus", "h-5 w-5")}</span><span class="max-w-full truncate text-[10px] font-medium">${isRaw ? "Raw Material" : "Product"}</span></button>
-        <div class="relative min-w-0 flex-1 px-1">${BulkActionDropdown("products-bulk-mobile", bulkProps({ extraActions: extra(true), updateLabel: `Recategorize ${title.toLowerCase()}`, updateDescription: `Move the selected ${title.toLowerCase()} into a new category`, deleteDescription: `Permanently remove the selected ${title.toLowerCase()}`, mobile: true, mobileVariant: "sheet", entityLabel: title, testIdPrefix: "products-bulk-action-mobile" }))}</div>
+        <button type="button" title="Add ${isRaw ? "Raw Material" : "Product"}" data-testid="products-add-btn-mobile" data-on-click="${fg ? "fg.add" : "pl.add"}" class="group flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 text-emerald-700 hover:bg-emerald-50 transition"><span class="rounded-lg bg-emerald-600 px-3 py-1 text-white">${K.icon("FiPlus", "h-5 w-5")}</span><span class="max-w-full truncate text-[10px] font-medium">${isRaw ? "Raw Material" : "Product"}</span></button>
+        <div class="relative min-w-0 flex-1 px-1">${fg ? fg.bulkButton(true) : BulkActionDropdown("products-bulk-mobile", bulkProps({ extraActions: extra(true), updateLabel: `Recategorize ${title.toLowerCase()}`, updateDescription: `Move the selected ${title.toLowerCase()} into a new category`, deleteDescription: `Permanently remove the selected ${title.toLowerCase()}`, mobile: true, mobileVariant: "sheet", entityLabel: title, testIdPrefix: "products-bulk-action-mobile" }))}</div>
       </div></div>
       <div class="md:hidden h-20"></div>
     </div>`;
