@@ -41,6 +41,7 @@ function createFinishedGoodsWorkspace(ctx) {
     recent: { added: new Set(), edited: new Set(), priced: new Set(), inactive: new Set() },
     catUsed: [], activity: [], keepSeparate: new Set(), knownIds: null,
     open: null, pickerView: "home", pop: null, popDraft: null, wizard: null, quick: null, rowMenu: null, dupOpen: null,
+    showSel: false, colEdit: null, // Addendum 008: C2 the table shows the selection; C3 one column in edit mode
   };
   let actSeq = 0;
 
@@ -209,7 +210,8 @@ function createFinishedGoodsWorkspace(ctx) {
   // ---- view: filter → sort → page -------------------------------------------------------------
   function view() {
     const query = currentQuery();
-    const list = W.all.filter((p) => matches(p, query));
+    if (W.showSel && !selectedIds().size) W.showSel = false;
+    const list = W.showSel ? selectedProducts() : W.all.filter((p) => matches(p, query));
     const { key, dir } = W.sort;
     const val = (p) => {
       const i = W.info.get(p.id);
@@ -272,7 +274,15 @@ function createFinishedGoodsWorkspace(ctx) {
 
   // ---- handlers ------------------------------------------------------------------------------
   const H = (name, fn) => (K.on[`fg.${name}`] = fn);
-  const applySearch = K.debounce((v) => ((W.q = v.trim()), (W.page = 1), view(), K.update()), 250);
+  // Addendum 008 C2: the bucket is shown in the page's own table; searching or filtering goes back to all products.
+  function showSelected(on = true) {
+    W.open = null;
+    W.showSel = on;
+    W.page = 1;
+    view();
+  }
+  H("showSel", (on) => showSelected(on === "1"));
+  const applySearch = K.debounce((v) => ((W.q = v.trim()), (W.showSel = false), (W.page = 1), view(), K.update()), 250);
   H("search", (_, ev) => ((W.qDraft = ev.target.value), applySearch(W.qDraft)));
   H("searchKey", (_, ev) => {
     if (ev.key === "ArrowDown") (ev.preventDefault(), ev.target.blur(), (W.cursor = 0));
@@ -298,20 +308,22 @@ function createFinishedGoodsWorkspace(ctx) {
     for (const p of S.products) setSelected(p.id, !all, "Selected on page");
   });
   H("selectResults", () => addQuery(currentQuery()));
-  H("clearSel", () => clearSelection());
+  H("clearSel", () => (clearSelection(), view()));
   H("removeSel", (id) => setSelected(id, false));
   H("dropSource", (idx) => W.sel.queries.splice(Number(idx), 1));
   H("clearFilter", (key) => {
     if (key === "search") (W.q = ""), (W.qDraft = "");
     else if (key === "price") (W.f.priceMin = ""), (W.f.priceMax = "");
     else W.f[key] = emptyFilters()[key];
+    W.showSel = false;
     W.page = 1;
     view();
   });
-  H("clearAll", () => ((W.f = emptyFilters()), (W.q = ""), (W.qDraft = ""), (W.page = 1), view()));
+  H("clearAll", () => ((W.f = emptyFilters()), (W.q = ""), (W.qDraft = ""), (W.showSel = false), (W.page = 1), view()));
   H("attention", (key) => {
     if (key === "duplicates") return (W.open = "dupes");
     W.f = { ...emptyFilters(), attention: W.f.attention === key ? null : key };
+    W.showSel = false;
     W.page = 1;
     view();
   });
@@ -342,6 +354,7 @@ function createFinishedGoodsWorkspace(ctx) {
     d[list] = d[list].includes(v) ? d[list].filter((x) => x !== v) : [...d[list], v];
   });
   H("popSearch", (_, ev) => (W.popDraft.search = ev.target.value));
+  H("popSearchClear", () => (W.popDraft.search = ""));
   H("popSort", (_, ev) => (W.popDraft.sort = ev.target.value));
   H("popPrice", (which, ev) => (W.popDraft[which] = ev.target.value));
   H("popClear", () => Object.assign(W.popDraft, { values: [], priceMin: "", priceMax: "", catalogues: [], missing: [] }));
@@ -351,6 +364,7 @@ function createFinishedGoodsWorkspace(ctx) {
     else W.f[key] = d.values;
     if (key === "cats") W.catUsed = [...new Set([...d.values, ...W.catUsed])];
     W.pop = null;
+    W.showSel = false;
     W.page = 1;
     view();
   });
@@ -371,7 +385,7 @@ function createFinishedGoodsWorkspace(ctx) {
     const t = ev.target;
     if (ev.defaultPrevented || ev.metaKey || ev.ctrlKey || ev.altKey) return;
     if (t instanceof HTMLElement && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName))) return;
-    if (W.open || W.wizard || W.quick || W.pop || W.rowMenu || S.drawerOpen || S.pendingDelete || isInlineEditing()) return;
+    if (W.open || W.wizard || W.quick || W.pop || W.rowMenu || W.colEdit || S.drawerOpen || S.pendingDelete || isInlineEditing()) return;
     const rows = S.products;
     const row = rows[W.cursor];
     const k = ev.key;
@@ -424,7 +438,7 @@ function createFinishedGoodsWorkspace(ctx) {
     return [];
   }
   function checkRow(on, label, count, action) {
-    return `<label class="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"><input type="checkbox"${K.attr("checked", on)} data-on-change="${action}" class="h-4 w-4 rounded border-gray-400 accent-emerald-600"><span class="min-w-0 flex-1 truncate text-gray-700 dark:text-gray-200">${esc(label)}</span>${count !== undefined ? `<span class="text-xs tabular-nums text-gray-400">${count}</span>` : ""}</label>`;
+    return `<label class="mb-0.5 flex cursor-pointer items-center gap-2.5 rounded-md border px-2 py-1.5 text-sm ${on ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-transparent hover:bg-gray-50 dark:hover:bg-gray-700"}"><input type="checkbox"${K.attr("checked", on)} data-on-change="${action}" class="h-4 w-4 rounded border-gray-400 accent-emerald-600"><span class="min-w-0 flex-1 truncate ${on ? "font-medium text-green-800 dark:text-green-300" : "text-gray-700 dark:text-gray-200"}">${esc(label)}</span>${count !== undefined ? `<span class="text-xs tabular-nums text-gray-400">${count}</span>` : ""}</label>`;
   }
   function popover(key) {
     const d = W.popDraft;
@@ -441,13 +455,14 @@ function createFinishedGoodsWorkspace(ctx) {
     }
     const titles = { cats: "Select categories", brands: "Brand", suppliers: "Supplier", statuses: "Status", taxes: "Tax", stock: "Stock", tags: "Tags" };
     let opts = optionsFor(key);
-    const searchable = opts.length > 8 || key === "cats";
     if (d.search) opts = opts.filter((o) => norm(o.label).includes(norm(d.search)));
     if (d.sort === "az") opts.sort((a, b) => a.label.localeCompare(b.label));
     else if (d.sort === "recent" && key === "cats") opts.sort((a, b) => (W.catUsed.indexOf(a.value) + 1 || 1e9) - (W.catUsed.indexOf(b.value) + 1 || 1e9));
     else opts.sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
     const note = key === "suppliers" ? `<p class="px-4 pt-2 text-[11px] text-amber-600">Supplier is a proposed field — derived from brand in discovery.</p>` : "";
-    return shell(titles[key], `${note}${searchable ? `<div class="flex gap-2 px-4 pt-3"><div class="relative flex-1">${K.icon("Search", "pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400")}<input value="${esc(d.search)}" data-on-input="fg.popSearch" placeholder="Search ${titles[key].toLowerCase().replace("select ", "")}…" data-testid="fg-pop-search" class="h-9 w-full rounded-md border border-gray-200 pl-8 pr-2 text-sm dark:border-gray-600 dark:bg-gray-700"></div>${key === "cats" ? `<select data-on-change="fg.popSort" aria-label="Sort categories" class="h-9 rounded-md border border-gray-200 px-1 text-xs dark:border-gray-600 dark:bg-gray-700"><option value="count"${K.attr("selected", d.sort === "count")}>Most used</option><option value="az"${K.attr("selected", d.sort === "az")}>A–Z</option><option value="recent"${K.attr("selected", d.sort === "recent")}>Recently used</option></select>` : ""}</div>` : ""}
+    // Addendum 008 C1: every multi-select has search, a ✕, and a "showing results for" row whose Clear keeps the ticks.
+    return shell(titles[key], `${note}<div class="flex gap-2 px-4 pt-3"><div class="relative flex-1">${K.icon("Search", "pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400")}<input value="${esc(d.search)}" data-on-input="fg.popSearch" placeholder="Search ${titles[key].toLowerCase().replace("select ", "")}…" data-testid="fg-pop-search" class="h-9 w-full rounded-md border border-gray-200 pl-8 pr-8 text-sm dark:border-gray-600 dark:bg-gray-700">${d.search ? `<button type="button" data-on-click="fg.popSearchClear" aria-label="Clear search" data-testid="fg-pop-search-x" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">${K.icon("X", "h-3.5 w-3.5")}</button>` : ""}</div>${key === "cats" ? `<select data-on-change="fg.popSort" aria-label="Sort categories" class="h-9 rounded-md border border-gray-200 px-1 text-xs dark:border-gray-600 dark:bg-gray-700"><option value="count"${K.attr("selected", d.sort === "count")}>Most used</option><option value="az"${K.attr("selected", d.sort === "az")}>A–Z</option><option value="recent"${K.attr("selected", d.sort === "recent")}>Recently used</option></select>` : ""}</div>
+      ${d.search ? `<div data-testid="fg-pop-results-for" class="mx-4 mt-2 flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs text-blue-800 dark:border-blue-900/40 dark:bg-blue-900/10 dark:text-blue-300"><span class="min-w-0 flex-1 truncate">Showing ${plural(opts.length, "result")} for “${esc(d.search)}”${d.values.length ? ` · ${d.values.length} ticked kept` : ""}</span><button type="button" data-on-click="fg.popSearchClear" data-testid="fg-pop-results-clear" class="font-semibold hover:underline">Clear</button></div>` : ""}
       <div class="max-h-72 overflow-y-auto px-2 py-2">${opts.map((o) => checkRow(d.values.includes(o.value), o.label, o.count, `fg.popToggle|${o.value}`)).join("") || `<p class="px-2 py-4 text-center text-sm text-gray-400">No matches</p>`}</div>`, `${d.values.length} selected`);
   }
 
@@ -481,7 +496,7 @@ function createFinishedGoodsWorkspace(ctx) {
     const pageAll = S.products.length > 0 && S.products.every((p) => ids.has(p.id));
     const attn = W.f.attention && ATTENTION[W.f.attention];
     const offerAll = !allFilteredSelected && (hasCriteria(query) || pageAll) && filtered > S.products.length - (pageAll ? 0 : 1);
-    const resultsLine = `<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600 dark:text-gray-300"><span data-testid="fg-result-count">Showing <b class="tabular-nums">${filtered}</b> of ${plural(W.all.length, "product")}${hasCriteria(query) ? " for these filters" : ""}</span>
+    const resultsLine = W.showSel ? `<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600 dark:text-gray-300"><span data-testid="fg-result-count">Showing <b class="tabular-nums">${filtered}</b> selected ${filtered === 1 ? "product" : "products"}</span><button type="button" data-on-click="fg.showSel|0" data-testid="fg-show-all" class="text-xs font-semibold text-green-700 hover:underline">Show all products</button></div>` : `<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600 dark:text-gray-300"><span data-testid="fg-result-count">Showing <b class="tabular-nums">${filtered}</b> of ${plural(W.all.length, "product")}${hasCriteria(query) ? " for these filters" : ""}</span>
       ${offerAll ? `<button type="button" data-on-click="fg.selectResults" data-testid="fg-select-all-results" class="inline-flex items-center gap-1.5 rounded-md border border-green-600 px-2.5 py-1 text-xs font-semibold text-green-700 hover:bg-green-50 dark:text-green-400">${K.icon("ListChecks", "h-3.5 w-3.5")}Select all ${filtered} results</button>` : ""}
       ${pageAll && !allFilteredSelected ? `<span class="text-xs text-gray-500">All ${S.products.length} on this page are selected.</span>` : ""}
       ${attn?.action && filtered ? `<button type="button" data-on-click="fg.attnAct" data-testid="fg-attention-cta" class="inline-flex items-center gap-1 rounded-md bg-gray-800 px-2.5 py-1 text-xs font-semibold text-white dark:bg-gray-200 dark:text-gray-900">${esc(attn.cta)} for ${filtered} →</button>` : ""}
@@ -493,9 +508,10 @@ function createFinishedGoodsWorkspace(ctx) {
       <span class="inline-flex items-center gap-1.5 text-sm font-semibold text-green-800 dark:text-green-300">${K.icon("CheckCircle2", "h-4 w-4")}<span data-testid="fg-selected-count">${ids.size}</span> ${ids.size === 1 ? "product" : "products"} selected</span>
       <span class="min-w-0 max-w-[40%] truncate text-xs text-green-700/80 dark:text-green-300/80" title="${esc(prov.map((x) => `${x.text}${x.names ? `: ${x.names.join(", ")}` : ""}`).join(" · "))}">${esc(prov.map((x) => (x.kind === "from" ? `From ${x.text}` : x.kind === "removed" ? `−${x.count} removed` : `+${x.count} ${x.text.toLowerCase()}`)).join(" · "))}</span>
       <div class="ml-auto flex flex-wrap gap-2">
-        <button type="button" data-on-click="fg.open|set" data-testid="fg-view-selected" class="h-8 rounded-md border border-green-300 bg-white px-3 text-xs font-medium text-green-800 hover:bg-green-100 dark:border-green-800 dark:bg-gray-800 dark:text-green-300">View selected</button>
+        <button type="button" data-on-click="fg.showSel|${W.showSel ? 0 : 1}" data-testid="fg-view-selected" class="h-8 rounded-md border border-green-300 bg-white px-3 text-xs font-medium text-green-800 hover:bg-green-100 dark:border-green-800 dark:bg-gray-800 dark:text-green-300">${W.showSel ? "Show all" : "View selected"}</button>
         <button type="button" data-on-click="fg.open|picker" data-testid="fg-add-more" class="h-8 rounded-md border border-green-300 bg-white px-3 text-xs font-medium text-green-800 hover:bg-green-100 dark:border-green-800 dark:bg-gray-800 dark:text-green-300">Add more</button>
-        <button type="button" data-on-click="fg.saveSelOpen" data-testid="fg-save-selection" class="inline-flex h-8 items-center gap-1 rounded-md border border-green-300 bg-white px-3 text-xs font-medium text-green-800 hover:bg-green-100 dark:border-green-800 dark:bg-gray-800 dark:text-green-300">${K.icon("Star", "h-3.5 w-3.5")}Save</button>
+        <button type="button" data-on-click="fg.saveSelOpen" disabled title="Coming soon — saved selections are not in the first release" data-testid="fg-save-selection" class="inline-flex h-8 items-center gap-1 rounded-md border border-green-300 bg-white px-3 text-xs font-medium text-green-800 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-green-800 dark:bg-gray-800 dark:text-green-300">${K.icon("Star", "h-3.5 w-3.5")}Save</button>
+        <button type="button" data-on-click="fg.exportList" data-testid="fg-export-selection" class="inline-flex h-8 items-center gap-1 rounded-md border border-green-300 bg-white px-3 text-xs font-medium text-green-800 hover:bg-green-100 dark:border-green-800 dark:bg-gray-800 dark:text-green-300">${K.icon("Download", "h-3.5 w-3.5")}Export</button>
         <button type="button" data-on-click="fg.clearSel" data-testid="fg-clear-selection" class="h-8 rounded-md px-2 text-xs font-medium text-red-600 hover:bg-red-50">Clear</button>
         <button type="button" data-on-click="fg.open|actions" data-testid="fg-bulk-action-btn" class="inline-flex h-8 items-center gap-1 rounded-md bg-green-600 px-3 text-xs font-semibold text-white hover:bg-green-700">Bulk Action${K.icon("ChevronDown", "h-3.5 w-3.5")}</button>
       </div></div>`;
@@ -507,11 +523,90 @@ function createFinishedGoodsWorkspace(ctx) {
   });
 
   // ---- render: table ------------------------------------------------------------------------------
+  // Every unit price scales by the same factor, so the unit chain keeps its ratios.
+  const sellingPatch = (p, f) => ({ patch: { price: round2(p.price * f), priceMap: scaleMap(p.priceMap, f), offerPriceMap: scaleMap(p.offerPriceMap, f) }, undo: { price: p.price, priceMap: p.priceMap, offerPriceMap: p.offerPriceMap } });
+
+  // ---- Column edit (Addendum 008 C3): pencil on a header → that column becomes inputs for every row --
+  const COL_EDIT = {
+    price: { label: "Selling price", cur: (p) => W.info.get(p.id).price, show: (v) => money(v) },
+    brand: { label: "Brand", cur: (p) => p.brand ?? "", show: (v) => v || "—" },
+    category: { label: "Category", cur: (p) => p.categoryReference ?? "", show: (v) => W.names[v] ?? "—" },
+  };
+  H("colEdit", (key) => (W.colEdit = { key, drafts: {}, busy: false }));
+  H("colSet", (id, ev) => (W.colEdit.drafts[id] = ev.target.value));
+  H("colCancel", () => (W.colEdit = null));
+  function colRows() {
+    const { key, drafts } = W.colEdit;
+    const c = COL_EDIT[key];
+    return Object.entries(drafts).map(([id, raw]) => {
+      const p = W.byId.get(id);
+      const cur = c.cur(p);
+      const row = { p, before: c.show(cur) };
+      if (key === "price") {
+        const n = round2(Number(raw));
+        row.after = money(n);
+        if (raw === "" || !(n > 0)) return { ...row, skip: "Enter a price above zero" };
+        if (!(cur > 0)) return { ...row, skip: "No current price" };
+        if (Math.abs(n - cur) < 0.005) return { ...row, skip: "No change" };
+        return { ...row, ...sellingPatch(p, n / cur) };
+      }
+      const v = key === "brand" ? raw.trim() : raw;
+      row.after = c.show(v);
+      if (!v) return { ...row, skip: `Enter a ${c.label.toLowerCase()}` };
+      if (v === cur) return { ...row, skip: "No change" };
+      const field = key === "brand" ? "brand" : "categoryReference";
+      return { ...row, patch: { [field]: v }, undo: { [field]: p[field] } };
+    });
+  }
+  H("colSave", async () => {
+    const ce = W.colEdit;
+    const rows = colRows();
+    ce.busy = true;
+    K.update();
+    try {
+      const r = await execute({ action: "colEdit", cfg: {} }, rows);
+      for (const x of r.ok) (W.recent.edited.add(x.p.id), ce.key === "price" && W.recent.priced.add(x.p.id));
+      W.activity.unshift({
+        id: ++actSeq, at: new Date(), action: `Edit ${COL_EDIT[ce.key].label.toLowerCase()} (column)`, count: rows.length,
+        criteria: W.showSel ? "Selected products" : describeQuery(currentQuery()), detail: "Edited row by row in the table",
+        ok: r.ok.length, skipped: r.skipped.length, failed: r.failed.length, rows: [...r.ok.map((x) => [x.p.name, "Updated", `${x.before} → ${x.after}`]), ...r.skipped.map((x) => [x.p.name, "Skipped", x.skip]), ...r.failed.map((x) => [x.p.name, "Failed", x.error])],
+        undo: undoFor(null, r), undone: false,
+      });
+      onNotify(`${plural(r.ok.length, "product")} updated${r.failed.length ? `, ${r.failed.length} failed` : ""}`, r.failed.length ? "error" : "success");
+      W.colEdit = null;
+      await refresh();
+    } catch (err) {
+      onNotify(err instanceof Error ? err.message : "Update failed", "error");
+    } finally {
+      if (W.colEdit) W.colEdit.busy = false;
+      K.update();
+    }
+  });
+  function colCell(p, key, html) {
+    if (W.colEdit?.key !== key) return html;
+    const d = W.colEdit.drafts[p.id];
+    const v = d ?? COL_EDIT[key].cur(p) ?? "";
+    const cls = `h-9 w-full rounded-md border ${d !== undefined ? "border-green-500 bg-green-50 dark:bg-green-900/20" : "border-gray-300 bg-white dark:bg-gray-800"} px-2 text-sm text-gray-900 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 dark:border-gray-600 dark:text-gray-100`;
+    const on = `data-on-input="fg.colSet|${p.id}" data-testid="fg-col-${key}-${p.id}" aria-label="${esc(COL_EDIT[key].label)} for ${esc(p.name)}"`;
+    if (key === "price") return `<input type="number" min="0" step="0.01" value="${esc(v)}" ${on} class="${cls} w-28 font-semibold tabular-nums">`;
+    if (key === "brand") return `<input list="fg-brand-list" value="${esc(v)}" ${on} class="${cls} min-w-[8rem]">`;
+    return `<select ${on.replace("data-on-input", "data-on-change")} class="${cls} min-w-[9rem]"><option value="">—</option>${W.leaves.map((l) => `<option value="${l.id}"${K.attr("selected", v === l.id)}>${esc(l.path)}</option>`).join("")}</select>`;
+  }
+  function colEditBar() {
+    const ce = W.colEdit;
+    if (!ce) return "";
+    const changing = colRows().filter((r) => !r.skip).length;
+    return `<div data-testid="fg-col-edit-bar" class="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 dark:border-blue-900/40 dark:bg-blue-900/10"><span class="mr-auto text-sm font-semibold text-blue-800 dark:text-blue-300">Editing ${esc(COL_EDIT[ce.key].label.toLowerCase())} · ${plural(changing, "change")}<span class="ml-3 text-xs font-normal text-blue-700/80 dark:text-blue-300/80">↑ ↓ or Enter move between rows${ce.key === "category" ? " · Alt+↓ opens the list" : ""}</span></span>
+      ${secondaryBtn("fg.colCancel", "Cancel", ce.busy, "fg-col-cancel")}${primaryBtn("fg.colSave", ce.busy ? "Saving…" : `Save ${plural(changing, "change")}`, ce.busy || !changing, "fg-col-save")}</div>
+      <datalist id="fg-brand-list">${Object.values(W.brandLabel).sort().map((b) => `<option value="${esc(b)}"></option>`).join("")}</datalist>`;
+  }
+
   function renderTable() {
     const ids = selectedIds();
     const pageAll = S.products.length > 0 && S.products.every((p) => ids.has(p.id));
     const pageSome = S.products.some((p) => ids.has(p.id));
-    const th = (key, label, cls = "") => `<th class="px-4 py-2 ${cls}"><button type="button" data-on-click="fg.sort|${key}" class="inline-flex items-center gap-1 uppercase hover:text-gray-800 dark:hover:text-gray-200">${label}${W.sort.key === key ? `<span class="text-green-600">${W.sort.dir > 0 ? "↑" : "↓"}</span>` : ""}</button></th>`;
+    const pencil = (key) => (COL_EDIT[key] && !W.colEdit ? `<button type="button" data-on-click="fg.colEdit|${key}" title="Edit ${COL_EDIT[key].label.toLowerCase()} for every row" aria-label="Edit ${COL_EDIT[key].label.toLowerCase()} column" data-testid="fg-col-edit-${key}" class="ml-1 rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-green-700 dark:hover:bg-gray-700">${K.icon("FiEdit", "h-3.5 w-3.5")}</button>` : "");
+    const th = (key, label, cls = "") => `<th class="px-4 py-2 ${cls}"><span class="inline-flex items-center"><button type="button" data-on-click="fg.sort|${key}" class="inline-flex items-center gap-1 uppercase hover:text-gray-800 dark:hover:text-gray-200">${label}${W.sort.key === key ? `<span class="text-green-600">${W.sort.dir > 0 ? "↑" : "↓"}</span>` : ""}</button>${pencil(key)}</span></th>`;
     const rows = S.products.map((p, idx) => {
       const i = W.info.get(p.id);
       const vm = i.vm;
@@ -523,21 +618,21 @@ function createFinishedGoodsWorkspace(ctx) {
         <td class="px-4 py-2"><div class="flex items-center gap-3"><div class="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-900">${ProductImage({ productId: p.id, directUrl: vm.thumbnailUrl, alt: name, className: "block h-10 w-10 rounded-lg object-cover" })}</div>
           <div class="min-w-[140px] max-w-80"><a href="${detailPath(p.id)}" data-testid="fg-name-${p.id}" class="block whitespace-normal break-words text-sm font-medium leading-5 text-gray-900 hover:text-green-700 dark:text-gray-100">${esc(name)}</a><span class="text-xs text-gray-500">${esc(p.measurement ? p.measurement.replace(/-/g, " · ") : "No unit set")}</span></div></div></td>
         <td class="px-4 py-2 text-sm tabular-nums"><span data-testid="fg-sku-${p.id}">${esc(p.articleNumber || "—")}</span>${i.dupe ? `<span title="Possible duplicate" class="ml-1 inline-block h-2 w-2 rounded-full bg-purple-500"></span>` : ""}</td>
-        <td class="px-4 py-2 text-sm">${i.cat ? esc(tc(i.cat)) : `<span class="text-yellow-600">Missing</span>`}</td>
-        <td class="px-4 py-2 text-sm">${p.brand ? esc(p.brand) : `<span class="text-gray-400">—</span>`}</td>
-        <td class="px-4 py-2"><div class="flex flex-col leading-tight"><span data-testid="fg-price-${p.id}" class="text-sm font-semibold">${money(i.price)}</span><span class="text-xs text-gray-500">${i.mrp !== undefined ? `${money(i.mrp)} (MRP)` : "No MRP"}${i.tax === null ? ` · <span class="text-red-500">no tax</span>` : ` · ${i.tax}%`}</span></div></td>
+        <td class="px-4 py-2 text-sm">${colCell(p, "category", i.cat ? esc(tc(i.cat)) : `<span class="text-yellow-600">Missing</span>`)}</td>
+        <td class="px-4 py-2 text-sm">${colCell(p, "brand", p.brand ? esc(p.brand) : `<span class="text-gray-400">—</span>`)}</td>
+        <td class="px-4 py-2"><div class="flex flex-col leading-tight">${colCell(p, "price", `<span data-testid="fg-price-${p.id}" class="text-sm font-semibold">${money(i.price)}</span>`)}<span class="text-xs text-gray-500">${i.mrp !== undefined ? `${money(i.mrp)} (MRP)` : "No MRP"}${i.tax === null ? ` · <span class="text-red-500">no tax</span>` : ` · ${i.tax}%`}</span></div></td>
         <td class="px-4 py-2"><div class="flex flex-col leading-tight"><span class="text-sm font-bold tabular-nums ${low ? "text-red-600" : "text-slate-800 dark:text-slate-200"}" data-testid="fg-stock-${p.id}">${i.stockLvl === "negative" ? p.stock : vm.stockLabel ?? 0} <span class="text-xs font-semibold text-slate-500">${esc(vm.stockUnitLabel ?? "")}</span></span><span class="text-xs ${low ? "text-red-500" : "text-gray-500"}">${i.stockLvl === "in" ? `${vm.canSell ?? 0} can sell · ${vm.inOrders ?? 0} in orders` : STOCK_LABEL[i.stockLvl]}</span></div></td>
         <td class="px-4 py-2"><span data-testid="fg-status-${p.id}" class="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${FG_STATUS_PILL[p.status] ?? FG_STATUS_PILL.DRAFT}"><span class="h-1.5 w-1.5 rounded-full bg-current"></span>${esc(FG_STATUS_LABEL[p.status] ?? p.status)}</span></td>
         <td class="px-4 py-2 text-right"><div class="flex items-center justify-end gap-1"><button type="button" data-on-click="pl.edit|${p.id}" title="Edit (E)" aria-label="Edit ${esc(vm.displayName)}" class="p-2 text-gray-600 hover:text-green-600">${K.icon("FiEdit")}</button><button type="button" data-on-click="fg.rowMenu|${p.id}" data-fg-rowmenu="${p.id}" title="More actions" aria-label="More actions for ${esc(vm.displayName)}" data-testid="fg-row-menu-${p.id}" class="p-2 text-gray-600 hover:text-green-600">${K.icon("FiMoreVertical")}</button></div></td>
       </tr>`;
     }).join("");
     const totalPages = Math.max(1, Math.ceil(W.filtered.length / FG_PAGE));
-    return `<div class="hidden md:block w-full overflow-x-auto ring-1 ring-black/5 rounded-lg bg-white dark:bg-gray-800"><table class="w-full" data-testid="products-table">
+    return `${colEditBar()}<div class="hidden md:block w-full overflow-x-auto ring-1 ring-black/5 rounded-lg bg-white dark:bg-gray-800"><table class="w-full" data-testid="products-table">
       <thead class="text-xs font-medium tracking-wide text-left text-zinc-500 uppercase border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800"><tr>
         <th class="px-4 py-2"><input type="checkbox"${K.attr("checked", pageAll)} data-on-click="fg.checkPage" aria-label="Select all on this page" title="Select all on this page" data-testid="fg-check-page" class="h-4 w-4 rounded border-gray-400 accent-emerald-600"${pageSome && !pageAll ? ' data-indeterminate="true"' : ""}></th>
         ${th("name", "Name")}${th("sku", "SKU")}${th("category", "Category")}${th("brand", "Brand")}${th("price", "Selling price")}${th("stock", "Stock")}${th("status", "Status")}<th class="px-4 py-2 text-right">Actions</th>
       </tr></thead>
-      <tbody class="bg-white divide-y divide-gray-100 dark:divide-gray-700 dark:bg-gray-800 text-gray-800 dark:text-gray-300">${rows}${S.products.length === 0 ? `<tr><td colspan="9" class="px-4 py-10 text-center text-sm text-gray-500" data-testid="products-list-empty">No products match. <button type="button" data-on-click="fg.clearAll" class="font-semibold text-green-700 hover:underline">Clear filters</button></td></tr>` : ""}</tbody>
+      <tbody${K.attr("data-grid-nav", Boolean(W.colEdit))} class="bg-white divide-y divide-gray-100 dark:divide-gray-700 dark:bg-gray-800 text-gray-800 dark:text-gray-300">${rows}${S.products.length === 0 ? `<tr><td colspan="9" class="px-4 py-10 text-center text-sm text-gray-500" data-testid="products-list-empty">No products match. <button type="button" data-on-click="fg.clearAll" class="font-semibold text-green-700 hover:underline">Clear filters</button></td></tr>` : ""}</tbody>
     </table><div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">${Pagination("fg-pg", { currentPage: W.page, totalPages, resultsPerPage: FG_PAGE, totalResults: W.filtered.length, onPageChange: (pg) => ((W.page = pg), view()), testIdPrefix: "products" })}</div></div>
     ${W.rowMenu ? DropdownMenu("fg-row-menu", { anchor: W.rowMenu.anchor, anchorSelector: `[data-fg-rowmenu="${W.rowMenu.id}"]`, onClose: () => (W.rowMenu = null), testId: "fg-row-menu", children: [
       ["view", "View details", "FiEye"], ["edit", "Edit product", "FiEdit"], ["price", "Change price", "IndianRupee"], ["tax", "Change tax", "Percent"], ["category", "Change category", "FolderInput"], ["tags", "Add / remove tags", "Tag"], ["status", "Change status", "CircleDot"], ["stock", "Adjust stock", "Package"], ["catalogueAdd", "Add to catalogue", "BookOpen"], ["delete", "Delete", "FiTrash2"],
@@ -557,6 +652,16 @@ function createFinishedGoodsWorkspace(ctx) {
     ["import", "ClipboardPaste", "Import product list", "Paste SKUs or upload an Excel / CSV file"],
     ["saved", "Star", "Saved selections", "Reuse a selection you saved before"],
   ];
+  // Addendum 008 C4/C5: the first release builds only these; the rest stay visible as "Coming soon".
+  const LIVE_METHODS = new Set(["search", "smart"]);
+  const LIVE_ACTIONS = new Set(["price", "inline", "category", "tags", "export", "delete"]);
+  const soon = `<span class="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-gray-700 dark:text-gray-400">Coming soon</span>`;
+  // Addendum 008 C6: one header on both dialogs — ① is always a way back to add more products.
+  function steps(cur) {
+    const n = selectedIds().size;
+    const step = (no, label, action, on, disabled) => `<button type="button" data-on-click="${action}"${K.attr("disabled", disabled)} data-testid="fg-step-${no}" class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${on ? "bg-green-600 text-white" : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"}"><span class="flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${on ? "bg-white text-green-700" : "bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-200"}">${no}</span>${label}</button>`;
+    return `<div data-testid="fg-steps" class="mb-4 flex items-center gap-1 border-b border-gray-100 pb-3 dark:border-gray-700">${step(1, "Select products", "fg.open|picker", cur === 1, false)}${K.icon("ChevronRight", "h-4 w-4 text-gray-300")}${step(2, `Bulk action${n ? ` (${n})` : ""}`, "fg.open|actions", cur === 2, !n)}</div>`;
+  }
   const PK = () => K.state("fg-picker", () => ({ search: "", cat: "", supplier: "", brand: "", rules: [{ field: "stock", op: "lt", value: "20" }], review: false, paste: "", match: null, fileName: "" }));
   H("pickView", (v) => {
     if (v === "filter") {
@@ -586,7 +691,7 @@ function createFinishedGoodsWorkspace(ctx) {
     if (kind.startsWith("attention:")) (f.attention = kind.split(":")[1]), (label = `Needs attention: ${ATTENTION[f.attention].label}`);
     if (kind.startsWith("recent:")) (f.recent = kind.split(":")[1]), (label = `Recently ${f.recent}`);
     addQuery({ q: "", f }, label);
-    W.open = "set";
+    W.pickerView = "home"; // Addendum 008 C6: back to step ① — add more, or go on to ②
   });
   H("pkRule", (arg, ev) => {
     const [idx, k] = arg.split("|");
@@ -617,7 +722,7 @@ function createFinishedGoodsWorkspace(ctx) {
   H("pkSelectMatched", () => {
     const m = PK().match;
     addIds(m.found.map((x) => x.p.id), PK().fileName ? `From file ${PK().fileName}` : "Pasted SKU list");
-    W.open = "set";
+    W.pickerView = "home"; // Addendum 008 C6: back to step ① — add more, or go on to ②
   });
   function matchSkus(raw) {
     const skus = raw.map((s) => String(s ?? "").trim()).filter(Boolean);
@@ -648,21 +753,24 @@ function createFinishedGoodsWorkspace(ctx) {
   const primaryBtn = (action, label, disabled, testId) => `<button type="button" data-on-click="${action}"${K.attr("disabled", disabled)}${K.attr("data-testid", testId)} class="inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-green-600 px-4 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50">${label}</button>`;
   const secondaryBtn = (action, label, disabled, testId) => `<button type="button" data-on-click="${action}"${K.attr("disabled", disabled)}${K.attr("data-testid", testId)} class="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200">${label}</button>`;
 
+  function pickerFooter() {
+    const n = selectedIds().size;
+    return n ? `<div class="mt-5 flex flex-wrap justify-end gap-3 border-t border-gray-100 pt-4 dark:border-gray-700">${secondaryBtn("fg.showSel|1", `Show ${n} in list`, false, "fg-pick-show-list")}${primaryBtn("fg.open|actions", `Next: Bulk action${K.icon("ArrowRight", "h-4 w-4")}`, false, "fg-pick-next")}</div>` : "";
+  }
   function pickerBody() {
     const pk = PK();
     const back = `<button type="button" data-on-click="fg.pickView|home" class="mb-4 inline-flex items-center gap-1 text-sm font-medium text-green-700 hover:underline">${K.icon("FiArrowLeft", "h-4 w-4")}All methods</button>`;
     const sel = selectedIds();
     switch (W.pickerView) {
       case "home":
-        return `<div class="grid gap-3 sm:grid-cols-2">${METHODS.map(([k, ic, t, d]) => `<button type="button" data-on-click="fg.pickView|${k}" data-testid="fg-method-${k}" class="flex items-start gap-3 rounded-xl border border-gray-200 p-4 text-left transition hover:border-green-400 hover:bg-green-50/50 dark:border-gray-700 dark:hover:bg-gray-700"><span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-600 dark:bg-green-900/30">${K.icon(ic, "h-5 w-5")}</span><span><span class="block text-sm font-semibold text-gray-900 dark:text-gray-100">${t}</span><span class="block text-xs text-gray-500">${d}</span></span></button>`).join("")}</div>
+        return `<div class="grid gap-3 sm:grid-cols-2">${METHODS.map(([k, ic, t, d]) => `<button type="button" data-on-click="fg.pickView|${k}"${K.attr("disabled", !LIVE_METHODS.has(k))} data-testid="fg-method-${k}" class="flex items-start gap-3 rounded-xl border border-gray-200 p-4 text-left transition enabled:hover:border-green-400 enabled:hover:bg-green-50/50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:enabled:hover:bg-gray-700"><span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-600 dark:bg-green-900/30">${K.icon(ic, "h-5 w-5")}</span><span class="flex-1"><span class="block text-sm font-semibold text-gray-900 dark:text-gray-100">${t}</span><span class="block text-xs text-gray-500">${d}</span></span>${LIVE_METHODS.has(k) ? "" : soon}</button>`).join("")}</div>
           <p class="mt-4 text-xs text-gray-500">Every method adds to the same selection. You can also tick rows in the table.</p>`;
       case "search": {
         const q = norm(pk.search);
         const hits = q ? W.all.filter((p) => q.split(/\s+/).every((t) => W.info.get(p.id).hay.includes(t))).slice(0, 40) : [];
         return `${back}<div class="relative mb-2">${K.icon("Search", "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400")}<input value="${esc(pk.search)}" data-on-input="fg.pkSearch" placeholder="Search products, SKU, barcode…" data-testid="fg-pick-search" autofocus class="h-10 w-full rounded-md border border-gray-200 pl-9 pr-3 text-sm dark:border-gray-600 dark:bg-gray-700"></div>
           <p class="mb-3 text-sm text-gray-600 dark:text-gray-300">Selected: <b data-testid="fg-pick-selected">${sel.size}</b> <span class="text-xs text-gray-400">— change the search and keep picking; nothing is cleared.</span></p>
-          <div class="max-h-[50vh] space-y-2 overflow-y-auto">${hits.map((p) => productPickRow(p, sel.has(p.id), `fg.pkToggle|${p.id}`)).join("") || `<p class="py-8 text-center text-sm text-gray-400">${q ? "No products match" : "Start typing to find products"}</p>`}</div>
-          <div class="mt-4 flex justify-end">${primaryBtn("fg.open|set", `Review ${sel.size} selected`, sel.size === 0)}</div>`;
+          <div class="max-h-[50vh] space-y-2 overflow-y-auto">${hits.map((p) => productPickRow(p, sel.has(p.id), `fg.pkToggle|${p.id}`)).join("") || `<p class="py-8 text-center text-sm text-gray-400">${q ? "No products match" : "Start typing to find products"}</p>`}</div>`;
       }
       case "catalogue": {
         const n = pk.cat ? countFor({ catalogues: [pk.cat] }) : 0;
@@ -762,27 +870,15 @@ function createFinishedGoodsWorkspace(ctx) {
     for (const q of s.queries) W.sel.queries.push(q);
     for (const [id, how] of s.include) if (W.byId.has(id)) setSelected(id, true, `${how} (${s.name})`);
     for (const id of s.exclude) setSelected(id, false);
-    W.open = "set";
+    W.pickerView = "home"; // Addendum 008 C6: back to step ① — add more, or go on to ②
   });
   H("delSaved", (idx) => writeSaved(savedSelections().filter((_, i) => i !== Number(idx))));
 
-  // ---- Selected Products set (infographic panel 4) ----------------------------------------------
+  // ---- Selected Products set (infographic panel 4) — shown in the main table (Addendum 008 C2) -----
   H("exportList", () => {
     const rows = selectedProducts().map((p) => [p.articleNumber ?? "", p.name, W.info.get(p.id).cat ?? "", p.brand ?? ""]);
     K.download("selected-products.csv", new Blob([PM.csv.toCsv([["SKU", "Product name", "Category", "Brand"], ...rows])], { type: "text/csv;charset=utf-8;" }));
   });
-  function selectedDrawer() {
-    const list = selectedProducts();
-    const prov = provenance();
-    return SlideDrawer("fg-selected", {
-      open: true, width: "narrow", onClose: () => (W.open = null), title: `Selected products (${list.length})`, testId: "fg-selected-drawer",
-      description: "Review exactly what the next action will change.",
-      footer: `<button type="button" data-on-click="fg.clearSel" class="h-12 flex-1 rounded-md border border-gray-200 bg-white text-sm font-medium text-red-500 hover:bg-red-50 dark:border-gray-700 dark:bg-gray-700">Clear all</button><button type="button" data-on-click="fg.open|actions"${K.attr("disabled", !list.length)} data-testid="fg-continue-bulk" class="inline-flex h-12 flex-[2] items-center justify-center gap-2 rounded-md bg-green-600 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50">Continue to Bulk Action${K.icon("ArrowRight", "h-4 w-4")}</button>`,
-      children: `${prov.length ? `<div class="mb-4 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm dark:border-blue-900/40 dark:bg-blue-900/10" data-testid="fg-provenance"><p class="font-semibold text-blue-800 dark:text-blue-300">${plural(list.length, "product")} selected</p><ul class="mt-1 space-y-1 text-xs text-blue-800/80 dark:text-blue-300/80">${prov.map((x) => `<li class="flex gap-2"><span class="min-w-0 flex-1">${x.kind === "from" ? "From: " : x.kind === "removed" ? "Removed: " : `${esc(x.text)}: `}${x.kind === "from" ? esc(x.text) : esc(x.names.slice(0, 4).join(", ") + (x.names.length > 4 ? ` +${x.names.length - 4} more` : ""))}</span><span class="shrink-0 tabular-nums font-semibold">${x.kind === "removed" ? "−" : "+"}${x.count}</span>${x.kind === "from" ? `<button type="button" data-on-click="fg.dropSource|${W.sel.queries.findIndex((q) => q.label === x.text)}" aria-label="Remove this source" class="shrink-0 text-blue-400 hover:text-red-500">${K.icon("X", "h-3.5 w-3.5")}</button>` : ""}</li>`).join("")}</ul></div>` : ""}
-        <div class="mb-3 flex flex-wrap gap-2">${secondaryBtn("fg.open|picker", `${K.icon("Plus", "h-4 w-4")}Add more`)}${secondaryBtn("fg.saveSelOpen", `${K.icon("Star", "h-4 w-4")}Save selection`, !list.length)}${secondaryBtn("fg.exportList", `${K.icon("Download", "h-4 w-4")}Export list`, !list.length)}</div>
-        <ul class="divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">${list.map((p) => `<li data-key="${p.id}" class="flex items-center gap-3 px-3 py-2"><div class="h-9 w-9 shrink-0 overflow-hidden rounded bg-gray-100">${ProductImage({ productId: p.id, directUrl: W.info.get(p.id).vm.thumbnailUrl, alt: "", className: "block h-9 w-9 object-cover" })}</div><span class="min-w-0 flex-1"><span class="block truncate text-sm font-medium text-gray-900 dark:text-gray-100">${esc(tc(p.name))}</span><span class="text-xs text-gray-500">${esc(p.articleNumber || "No SKU")}</span></span><button type="button" data-on-click="fg.removeSel|${p.id}" aria-label="Remove ${esc(p.name)} from selection" data-testid="fg-remove-${p.id}" class="p-1.5 text-gray-400 hover:text-red-500">${K.icon("X", "h-4 w-4")}</button></li>`).join("") || `<li class="px-3 py-10 text-center text-sm text-gray-400">Nothing selected yet.</li>`}</ul>`,
-    });
-  }
 
   // ---- Bulk Action menu (infographic panel 5) ---------------------------------------------------
   const MENU = [
@@ -808,7 +904,7 @@ function createFinishedGoodsWorkspace(ctx) {
     const n = selectedIds().size;
     return FormModal("fg-actions", {
       open: true, onClose: () => (W.open = null), title: `Bulk actions (${plural(n, "product")})`, size: "lg", testId: "fg-actions-modal",
-      children: `<div class="grid gap-x-8 gap-y-5 sm:grid-cols-2">${MENU.map(([group, items]) => `<div><p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">${group}</p>${items.map(([a, l, ic, why]) => `<button type="button" data-on-click="fg.menu|${a}"${K.attr("disabled", Boolean(why))}${K.attr("title", why)} data-testid="fg-menu-${a}" class="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-sm transition disabled:cursor-not-allowed disabled:opacity-45 ${a === "delete" ? "text-red-600 hover:bg-red-50" : "text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700"}">${K.icon(ic, "h-4 w-4 shrink-0")}<span class="flex-1">${l}</span>${why ? `<span class="text-[10px] text-gray-400">not yet</span>` : ""}</button>`).join("")}</div>`).join("")}</div>`,
+      children: `${steps(2)}<div class="grid gap-x-8 gap-y-5 sm:grid-cols-2">${MENU.map(([group, items]) => `<div><p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">${group}</p>${items.map(([a, l, ic, why]) => `<button type="button" data-on-click="fg.menu|${a}"${K.attr("disabled", Boolean(why) || !LIVE_ACTIONS.has(a))}${K.attr("title", why)} data-testid="fg-menu-${a}" class="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-sm transition disabled:cursor-not-allowed disabled:opacity-45 ${a === "delete" ? "text-red-600 hover:bg-red-50" : "text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700"}">${K.icon(ic, "h-4 w-4 shrink-0")}<span class="flex-1">${l}</span>${why || !LIVE_ACTIONS.has(a) ? soon : ""}</button>`).join("")}</div>`).join("")}</div>`,
     });
   }
 
@@ -887,9 +983,7 @@ function createFinishedGoodsWorkspace(ctx) {
         if (!(n > 0)) return { ...row, skip: "Would be zero or below" };
         if (Math.abs(n - cur) < 0.005) return { ...row, skip: "No change" };
         if (cfg.target === "selling") {
-          const f = n / cur;
-          row.patch = { price: round2(p.price * f), priceMap: scaleMap(p.priceMap, f), offerPriceMap: scaleMap(p.offerPriceMap, f) };
-          row.undo = { price: p.price, priceMap: p.priceMap, offerPriceMap: p.offerPriceMap };
+          Object.assign(row, sellingPatch(p, n / cur));
           if (i.mrp !== undefined && n > i.mrp) row.warn = `Above MRP ${money(i.mrp)}`;
           if (i.custom.length) row.warn = [row.warn, `Custom price in ${i.custom.map((c) => c.name).join(", ")} kept`].filter(Boolean).join(" · ");
         } else if (cfg.target === "mrp") {
@@ -1325,8 +1419,7 @@ function createFinishedGoodsWorkspace(ctx) {
   }
 
   function renderModals() {
-    return `${W.open === "picker" ? FormModal("fg-picker-modal", { open: true, onClose: () => (W.open = null), title: W.pickerView === "home" ? "Select products for bulk action" : METHODS.find(([k]) => k === W.pickerView)[2], description: `${plural(selectedIds().size, "product")} selected so far`, size: "lg", testId: "fg-picker", children: pickerBody() }) : ""}
-      ${W.open === "set" ? selectedDrawer() : ""}
+    return `${W.open === "picker" ? FormModal("fg-picker-modal", { open: true, onClose: () => (W.open = null), title: W.pickerView === "home" ? "Select products for bulk action" : METHODS.find(([k]) => k === W.pickerView)[2], description: `${plural(selectedIds().size, "product")} selected so far`, size: "lg", testId: "fg-picker", children: `${steps(1)}${pickerBody()}${pickerFooter()}` }) : ""}
       ${W.open === "actions" ? actionsModal() : ""}
       ${W.open === "dupes" ? dupesModal() : ""}
       ${W.open === "activity" ? activityDrawer() : ""}
