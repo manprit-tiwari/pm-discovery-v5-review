@@ -1,0 +1,96 @@
+<!doctype html>
+<!--
+  DISCOVERY SCREEN — Assistant — "What reached FoodBridge"
+  Standalone-openable; reached from the chat's ⋯ menu and the wiring hub.
+  - Builds: what Create my store sent (the stand-in bridge's GET /api/stores) — the Excel, setup.json and
+    every file he added, each downloadable. In production the customer-success module reads these through
+    store-setup's StoreBuildFeed; this screen only proves the build arrived.
+  HTML/CSS/vanilla JS only. Disposable.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="favicon.ico" />
+  <title>Assistant — What reached FoodBridge</title>
+  <style>
+    body { margin: 0; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #111B21; background: #F0F2F5; }
+    .bar { display: flex; gap: 14px; align-items: center; padding: 10px 16px; background: #fff; border-bottom: 1px solid #E3E6EA; font-size: 13px; }
+    .bar a { color: #00664F; font-weight: 600; text-decoration: none; }
+    main { max-width: 860px; margin: 0 auto; padding: 20px 16px 48px; }
+    h1 { font-size: 20px; margin: 4px 0 2px; } h2 { font-size: 16px; margin: 28px 0 8px; }
+    .sub { color: #667781; margin: 0 0 12px; }
+    .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 2px rgba(11, 20, 26, .1); padding: 14px 16px; margin-bottom: 10px; }
+    .card b { font-size: 15px; } .card small { color: #667781; }
+    .files { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .files button { border: 1px solid #D1D7DB; background: #fff; border-radius: 99px; padding: 4px 10px; font: inherit; font-size: 12.5px; cursor: pointer; }
+    .files button:hover { border-color: #00A884; }
+    .counts { margin-top: 6px; color: #3B4A54; font-size: 13px; }
+    pre { white-space: pre-wrap; background: #F0F2F5; border-left: 4px solid #00A884; border-radius: 6px; padding: 8px 10px; margin: 8px 0 0; font: inherit; }
+    .empty { color: #667781; }
+    .tag { display: inline-block; padding: 1px 8px; border-radius: 99px; background: #FFEECD; color: #7A5B12; font-size: 12px; font-weight: 600; }
+    .steps { display: flex; gap: 4px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 12px; }
+    .steps li { flex: 1; padding: 4px 6px; border-radius: 6px; background: #F0F2F5; color: #8696A0; text-align: center; }
+    .steps li.done { background: #E7F3EC; color: #0B7534; } .steps li.now { background: #FDF7EA; color: #A15C07; font-weight: 600; }
+    .steps li.ready { background: #25D366; color: #fff; }
+    .demo { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; padding: 6px 8px; border: 1px dashed #C9CED3; border-radius: 8px; font-size: 12px; color: #667781; }
+    .demo button { border: 1px solid #D1D7DB; background: #fff; border-radius: 6px; padding: 3px 8px; font: inherit; cursor: pointer; }
+    .clear { margin-top: 8px; border: 0; background: none; color: #B3261E; font: inherit; cursor: pointer; padding: 0; }
+  </style>
+</head>
+<body>
+  <div class="bar"><a href="../index.html">← Wiring hub</a><a href="chat.html">Back to the chat →</a></div>
+  <main>
+    <h1>What reached FoodBridge</h1>
+    <p class="sub" id="who">Every <b>Create my store</b> from this browser, as the stand-in bridge received it. Nothing left the browser.</p>
+    <div id="builds"><p class="empty">Loading…</p></div>
+  </main>
+  <script>
+    (function () {
+      "use strict";
+      var esc = function (s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); };
+      var API = "http://localhost:8787";   // any host: the service worker answers /api/stores itself
+      /* ?mobile= (from the chat's ⋯ on a phone or in the tower): only that owner's builds (/api/mystores).
+         Without it, every build in this browser — the team's view, a discovery aid. */
+      var MOB = (new URLSearchParams(location.search).get("mobile") || "").replace(/\D/g, "").slice(-10);
+      /* v7 (addendum-014 D-3): the request's ticket step, and the discovery's stand-in for the team that moves it */
+      var STEPS = [["new", "Requested"], ["inReview", "In review"], ["setUp", "Set up"], ["ready", "Ready to use"]];
+      function steps(s) {
+        var at = Math.max(0, STEPS.findIndex(function (x) { return x[0] === s.status; }));
+        return '<ol class="steps">' + STEPS.map(function (x, i) { return '<li class="' + (i < at ? "done" : i === at ? (x[0] === "ready" ? "now ready" : "now") : "") + '">' + esc(x[1]) + "</li>"; }).join("") + "</ol>" +
+          (at < 3 ? '<div class="demo">Demo · team:' + STEPS.slice(at + 1).map(function (x) { return '<button type="button" data-step="' + x[0] + '" data-id="' + esc(s.id) + '" data-at="' + at + '">' + esc(x[1]) + "</button>"; }).join("") + "</div>" : "");
+      }
+      function builds() {
+        fetch(API + (MOB ? "/api/mystores" : "/api/stores"), MOB ? { headers: { "x-owner-mobile": MOB } } : {}).then(function (r) { return r.json(); }).then(function (j) {
+          var list = (j && j.stores) || [], el = document.getElementById("builds");
+          if (!list.length) { el.innerHTML = '<p class="empty">No store created from this browser yet.</p>'; return; }
+          el.innerHTML = list.map(function (s) {
+            var m = s.meta || {}, c = m.counts || {};
+            return '<div class="card"><b>' + esc(m.shop || "—") + "</b> <small>" + esc(m.mobile || "") + " · " + esc(m.type || "") + " · " + esc(new Date(m.received || m.at).toLocaleString("en-IN")) + "</small>" +
+              '<div class="counts">' + [c.products + " products", c.customers + " customers", c.suppliers + " suppliers", c.staff + " staff", c.answered + "/6 daily work", c.photos + " files", c.gaps + " to follow up"].join(" · ") + "</div>" +
+              (MOB ? steps(s) : "") +
+              '<div class="files">' + (s.files || []).map(function (f) { var n = f.name || f; return '<button type="button" data-id="' + esc(s.id) + '" data-file="' + esc(n) + '">⬇ ' + esc(n) + "</button>"; }).join("") + "</div></div>";
+          }).join("");
+        }).catch(function () { document.getElementById("builds").innerHTML = '<p class="empty">The stand-in bridge isn\'t running — open the chat once first.</p>'; });
+      }
+      document.addEventListener("click", function (e) {
+        var st = e.target.closest("[data-step]");
+        if (st) {
+          var order = STEPS.map(function (x) { return x[0]; }), path = order.slice(+st.dataset.at + 1, order.indexOf(st.dataset.step) + 1);
+          path.reduce(function (p, x) { return p.then(function () { return fetch(API + "/api/tickets", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: st.dataset.id, status: x }) }); }); }, Promise.resolve()).then(builds, builds);
+          return;
+        }
+        var b = e.target.closest("[data-file]");
+        if (b) {
+          fetch(API + (MOB ? "/api/mystores" : "/api/stores") + "?id=" + encodeURIComponent(b.dataset.id) + "&file=" + encodeURIComponent(b.dataset.file), MOB ? { headers: { "x-owner-mobile": MOB } } : {}).then(function (r) { return r.blob(); }).then(function (bl) {
+            var a = document.createElement("a"); a.href = URL.createObjectURL(bl); a.download = b.dataset.file.split("/").pop(); a.click();
+          });
+        }
+      });
+      if (MOB) document.getElementById("who").innerHTML = "Your store, as FoodBridge received it — under <b>" + MOB.slice(0, 5) + " " + MOB.slice(5) + "</b> only.";
+      if ("serviceWorker" in navigator) navigator.serviceWorker.register("../discovery-bridge.js", { scope: "../" }).then(function () { return navigator.serviceWorker.ready; }).then(function () { setTimeout(builds, navigator.serviceWorker.controller ? 0 : 600); }, builds);
+      else builds();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+{
+ "capturedAt": "2026-10-05T04:53:00.580Z",
+ "source": "foodbridge-mock-platform v7 @2a7ead3, screens/control-tower.html (Vasu Foods): FBControlTower.api.model() and .timeline(), first 6 rows a tile, first 8 events a day",
+ "business": "Vasu Foods",
+ "model": {
+  "levers": [
+   {"id":"deliveries","label":"Deliveries","status":"bad","headline":{"value":"1 of 15 delivered","context":"14 to deliver"},"action":null,"preview":null,"tiles":{
+    "good":{"label":"On track","word":"Done","value":"1","count":1,"rows":[{"title":"Aggarwal Super Store","value":2280,"note":"Delivered 10:01 am, 81 min late"}]},
+    "bad":{"label":"Pending","word":"In hand","value":"14","count":14,"rows":[{"title":"Gupta Mart","value":2290,"note":"On Van 2 · PB-11-BZ-7735 · Balwinder Singh · due 9:54 am"},{"title":"New Samana Kiryana","value":1850,"note":"On Van 1 · PB-11-CX-4412 · Gurpreet Singh · due 10:30 am"},{"title":"Bansal Traders (Commission Agents)","value":2550,"note":"On Van 2 · PB-11-BZ-7735 · Balwinder Singh · due 11:06 am"},{"title":"Jindal Trading Company","value":3060,"note":"On Van 1 · PB-11-CX-4412 · Gurpreet Singh · due 11:42 am"},{"title":"Sethi General Store","value":2530,"note":"On Van 2 · PB-11-BZ-7735 · Balwinder Singh · due 12:18 pm"},{"title":"Garg Commission Agency","value":2880,"note":"On Van 1 · PB-11-CX-4412 · Gurpreet Singh · due 12:54 pm"}]},
+    "ugly":{"label":"Missed","word":"Need you","value":"0","count":0,"rows":[]}}},
+   {"id":"collections","label":"Collections","status":"bad","headline":{"value":"₹30 Cr overdue","context":"of ₹85.3 Cr outstanding"},"action":{"label":"Send 2 reminders"},"preview":null,"tiles":{
+    "good":{"label":"On track","word":"Collected","value":"₹36.6 Cr","count":30,"rows":[{"title":"Sangrur Food Distributors","value":157126105,"note":"Paid, 41 days late"},{"title":"Rajpura Cold Chain Agencies","value":64475590,"note":"Paid, 3 days late"},{"title":"Patiala Frozen Foods","value":63649010,"note":"Paid on time"},{"title":"Shahi Caterers","value":25819340,"note":"Paid, 58 days late"},{"title":"Mittal Brothers Commission Agents","value":17764473,"note":"Paid on time"},{"title":"Haveli Dhaba","value":8948533,"note":"Paid on time"}]},
+    "bad":{"label":"Needs work","word":"Late or due soon","value":"₹24.7 Cr","count":16,"rows":[{"title":"Rajpura Cold Chain Agencies","value":67137081,"note":"Due in 4 days"},{"title":"Patiala Frozen Foods","value":65777358,"note":"Due in 2 days"},{"title":"Tricity Fresh & Frozen","value":62531567,"note":"Due in 6 days"},{"title":"Bansal Traders (Commission Agents)","value":14746596,"note":"Due in 2 days"},{"title":"Shahi Caterers","value":12874723,"note":"Due in 3 days"},{"title":"Mittal Brothers Commission Agents","value":8384358,"note":"Due in 5 days"}]},
+    "ugly":{"label":"Urgent","word":"Needs chasing","value":"₹30 Cr","count":13,"rows":[{"title":"Sangrur Food Distributors","value":184014736,"note":"22 days"},{"title":"Tricity Fresh & Frozen","value":59948173,"note":"1 day"},{"title":"Shahi Caterers","value":43716299,"note":"37 days"},{"title":"Bansal Traders (Commission Agents)","value":7387602,"note":"3 days"},{"title":"Gupta Mart","value":2520819,"note":"4 days"},{"title":"Sethi General Store","value":1546650,"note":"3 days"}]}}},
+   {"id":"purchase","label":"Purchase","status":"ugly","headline":{"value":"11 products to buy","context":"this week"},"action":{"label":"Raise 1 purchase order"},"preview":null,"tiles":{
+    "good":{"label":"On track","word":"Covered","value":"0","count":0,"rows":[]},
+    "bad":{"label":"Needs work","word":"Buy this week","value":"11","count":11,"rows":[{"title":"Mixed Veg 200G","value":null,"note":"5777129 units"},{"title":"Mixed Veg 500G","value":null,"note":"2139229 units"},{"title":"Mixed Veg 1KG","value":null,"note":"846583 units"},{"title":"Mixed Veg 2KG","value":null,"note":"334638 units"},{"title":"Mixed Veg 5KG","value":null,"note":"11371 units"},{"title":"Green Peas 200G","value":null,"note":"8599212 units"}]},
+    "ugly":{"label":"Urgent","word":"Out","value":"0","count":0,"rows":[]}}},
+   {"id":"inventory","label":"Inventory","status":"ugly","headline":{"value":"0 fast movers healthy","context":"of 11 selling"},"action":{"label":"Reorder 11 fast movers"},"preview":null,"tiles":{
+    "good":{"label":"On track","word":"Healthy","value":"0","count":0,"rows":[]},
+    "bad":{"label":"Needs work","word":"Low","value":"11","count":11,"rows":[{"title":"Mixed Veg 200G","note":"0 days of stock"},{"title":"Mixed Veg 500G","note":"0 days of stock"},{"title":"Mixed Veg 1KG","note":"0 days of stock"},{"title":"Mixed Veg 2KG","note":"0 days of stock"},{"title":"Mixed Veg 5KG","note":"0 days of stock"},{"title":"Green Peas 200G","note":"0 days of stock"}]},
+    "ugly":{"label":"Urgent","word":"Out or dead","value":"0","count":0,"rows":[]}}},
+   {"id":"order","label":"Order","status":"good","headline":{"value":"84 orders","context":"last 30 days"},"action":null,"preview":null,"tiles":{
+    "good":{"label":"On track","word":"Ordered","value":"84","count":84,"rows":[{"title":"Shahi Caterers","value":null},{"title":"Punjabi Tadka Restaurant","value":null},{"title":"Tricity Fresh & Frozen","value":null},{"title":"Rajpura Cold Chain Agencies","value":null},{"title":"Mittal Brothers Commission Agents","value":null},{"title":"Haveli Dhaba","value":null}]},
+    "bad":{"label":"Needs work","word":"Late to reorder","value":"0","count":0,"rows":[]},
+    "ugly":{"label":"Urgent","word":"Short or lost","value":"0","count":0,"rows":[]}}},
+   {"id":"production","label":"Production","status":"ugly","headline":{"value":"26,853 cartons not covered","context":"of 29,670 ordered"},"action":null,"preview":null,"tiles":{
+    "good":{"label":"On track","word":"On track","value":"9","count":9,"rows":[{"title":"Soya Chaap 20 Kg","note":"368 packs · in stock"},{"title":"Cauliflower","note":"15,000 kg with the supplier"},{"title":"Broccoli","note":"8,000 kg with the supplier"},{"title":"Green Peas","note":"In stock"},{"title":"Soya Flour","note":"In stock"},{"title":"Gluten Powder (Vital Wheat Gluten)","note":"In stock"}]},
+    "bad":{"label":"Needs work","word":"Needs work","value":"5","count":5,"rows":[{"title":"Soya Chaap 20 Kg","note":"418 packs to produce · below minimum stock"},{"title":"Cut Carrots 50 Kg · PB-2026-00260","note":"Blanch waiting 146 min · nobody started it"},{"title":"Cut Carrots 50 Kg · PB-2026-00260","note":"Trim · cut 20 mm · wash lost 13.4% · the recipe allows 13%"},{"title":"Carrots","note":"75 kg to order · below minimum stock"},{"title":"Beans","note":"10,000 kg awaiting approval"}]},
+    "ugly":{"label":"Urgent","word":"Urgent","value":"25","count":25,"rows":[{"title":"Mixed Veg 200G / 30 kg pack","note":"3,777 cartons ordered · 3,316 cartons not covered"},{"title":"Mixed Veg 500G / 30 kg pack","note":"4,585 cartons ordered · 4,407 cartons not covered"},{"title":"Mixed Veg 1KG / 30 kg pack","note":"2,670 cartons ordered · 2,571 cartons not covered"},{"title":"Mixed Veg 2KG / 30 kg pack","note":"700 cartons ordered · 634 cartons not covered"},{"title":"Mixed Veg 5KG / 30 kg pack","note":"60 cartons ordered · 44 cartons not covered"},{"title":"Green Peas 200G / 30 kg pack","note":"6,283 cartons ordered · 5,314 cartons not covered"}]}}}
+  ]
+ },
+ "timeline": {
+  "days": [
+   {"label":"Today","items":[{"tone":"good","time":"10:14 am","text":"₹20 Cr received from 5 customers"},{"tone":"info","time":"10:01 am","text":"Deliveries needs work now"},{"tone":"bad","time":"10:01 am","text":"Van 1 · PB-11-CX-4412's first trip running 1 h 21 min late · loading ran late"},{"tone":"good","time":null,"text":"₹2.5 L received from Garg Commission Agency"}]},
+   {"label":"Yesterday","items":[{"tone":"good","time":null,"text":"₹67.6 L received from Bansal Traders (Commission Agents)"}]}
+  ]
+ }
+}

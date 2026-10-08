@@ -1,0 +1,40 @@
+<!doctype html>
+<!--
+  DISCOVERY SCREEN — Assistant — "The assistant, on a page of its own: it opens on hi"
+  Standalone-openable; also reached from the wiring hub (../index.html).
+  The owner's flow (voice notes, 5 Oct 2026; v6): hi → Set up my store → mobile → the shop's name (or confirm a saved
+  store) → contacts (address book on a phone, QR on a computer) → who is who → anything else? → the business (ticks) →
+  the day → products from any file (Claude; a stand-in here) → anything else? → papers → anything else? → the store,
+  summed up → Create my store (to the FoodBridge team) → done. v7: the team marks it Ready to use → his store's options, each
+  a login link from the FoodBridge Digital Assistant (not connected yet: a sample).
+  v8: every question takes a comment, typed or spoken (🎤) — never a forced selection.
+  Outgoing transitions (proto-FSM, feed SSOT-1/-5): see the hub's transition map.
+    - ⋯ → What reached FoodBridge → sent.html
+  v11: Hinglish, the assistant speaks first; contacts and products are files only (no QR, no phone picker, no photos).
+  HTML/CSS/vanilla JS only. Disposable. Informs the SSOTs, not imported by development/.
+-->
+<html lang="en" class="as-page" data-mode="page">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#008069" />
+  <link rel="icon" href="favicon.ico" />
+  <title>FoodBridge Assistant</title>
+  <link rel="stylesheet" href="chat/shell.css?v=aaf1e67" />
+  <link rel="stylesheet" href="chat/widgets.css?v=aaf1e67" />
+  <link rel="stylesheet" href="chat/desk.css?v=aaf1e67" />
+</head>
+<body>
+  <script src="store/catalogue.js?v=aaf1e67"></script>
+  <script src="store/model.js?v=aaf1e67"></script>
+  <script src="store/export.js?v=aaf1e67"></script>
+  <script src="store/import.js?v=aaf1e67"></script>
+  <script src="store/outbox.js?v=aaf1e67"></script>
+  <script src="chat/tower-brain.js?v=aaf1e67"></script>
+  <script src="chat/onboard.js?v=aaf1e67"></script>
+  <script src="chat/progress-standin.js?v=aaf1e67"></script>
+  <script src="feedback.js?v=aaf1e67"></script>
+  <script src="chat/app.js?v=aaf1e67"></script>
+  <script src="boot.js?v=aaf1e67"></script>
+</body>
+</html>

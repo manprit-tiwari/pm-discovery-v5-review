@@ -1,0 +1,178 @@
+/* Assistant discovery · what the chat adds to the tower's WhatsApp look (shell.css, copied unchanged
+   from foodbridge-mock-platform v7/screens/control-tower-chat.css @ 2a7ead3): a page of its own, the
+   answer widgets inside a bubble (a dropdown, ticks, the contacts card, a file card, the products and
+   the store), the 📎 in the message box, and the sheets (who is who, check products, pick customers). */
+
+:root { --wa-head-d: #00664F; }
+
+/* ── the page of its own: the chat fills the window; on a computer, WhatsApp Web's centred column ── */
+html.as-page, html.as-page body { height: 100%; margin: 0; background: #DADBD3; overflow: hidden; }
+html.as-page .cb-chat { position: fixed; inset: 0; width: auto; height: auto; border-radius: 0; box-shadow: none; animation: none; }
+@media (min-width: 768px) {
+  html.as-page:not(.has-wa) body::before { content: ""; position: fixed; inset: 0 0 auto; height: 127px; background: var(--wa-head); }
+  html.as-page .cb-chat { inset: 19px max(19px, calc(50% - 470px)); border-radius: 0; box-shadow: 0 6px 18px rgba(11, 20, 26, .18); }
+  html.as-page .cb-x { display: none !important; }
+}
+html.as-page .cb-back { display: none !important; }
+/* In the tower: a panel, as the tower's own assistant is. */
+html.as-panel .cb-chat { z-index: 90; }
+
+.cb-head .cb-hbtn.cb-more { margin-left: auto; }
+.cb-head .cb-hbtn.cb-info { display: none; }   /* business info: the desktop's drawer only (desk.css) */
+.cb-row.in .cb-bub.is-wide { min-width: min(320px, 100%); }
+.cb-grp.is-wide { max-width: min(92%, 560px); width: 100%; }
+
+/* a quoted message (the campaign, shown back before it is queued) */
+.cb-quote { display: block; padding: 6px 10px; border-left: 4px solid var(--wa-send); border-radius: 6px; background: #F0F2F5; white-space: pre-wrap; }
+
+/* An answer that has moved on: its buttons stay, quieter, and do nothing. */
+.cb-row.is-past .cb-btn, .cb-row.is-past .cb-listbtn, .cb-row.is-past .aw button, .cb-row.is-past .aw select, .cb-row.is-past .aw input { pointer-events: none; opacity: .55; }
+.cb-row.is-past .aw-ho .ho-qr { opacity: .3; }
+/* a dropdown or ticks already answered: the answer is the bubble after it */
+.cb-row.is-past .aw.is-form { display: none; }
+
+/* ── widgets inside a bubble ───────────────────────────────────────────── */
+.aw { clear: both; margin: 8px -2px 2px; font-size: 14px; }
+.aw-row { display: flex; gap: 6px; align-items: center; }
+.aw select, .aw input[type=text], .aw input[type=number] { flex: 1; min-width: 0; height: 40px; padding: 0 10px; border: 1px solid #D1D7DB; border-radius: 8px; background: #fff;
+  font: inherit; color: var(--wa-ink); }
+.aw select:focus, .aw input:focus { outline: none; border-color: var(--wa-send); box-shadow: 0 0 0 2px rgba(0, 168, 132, .25); }
+.aw-go { height: 40px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--wa-send); color: #fff; font: 600 14px/1 inherit; font-family: inherit; cursor: pointer; }
+.aw-go:disabled { opacity: .5; cursor: default; }
+.aw-go.is-quiet { background: #F0F2F5; color: var(--wa-link); }
+/* ticks (pay methods) */
+.aw-ticks { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
+.aw-tick { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 6px; border-radius: 8px; cursor: pointer; }
+.aw-tick:hover { background: #F5F6F6; }
+.aw-tick input { width: 20px; height: 20px; accent-color: var(--wa-send); margin: 0; }
+
+/* the contacts card: a QR on a computer, the address book on a phone */
+.aw-ho { display: flex; gap: 12px; align-items: flex-start; padding: 10px; border-radius: 10px; background: #F7F8FA; border: 1px solid var(--wa-line); }
+.aw-ho .ho-qr { flex: none; width: 128px; height: 128px; padding: 6px; border-radius: 10px; background: #fff; box-shadow: var(--wa-shadow); }
+.aw-ho .ho-qr svg { display: block; width: 100%; height: 100%; }
+.aw-ho ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; line-height: 18px; color: #3B4A54; }
+.aw-ho ol li { display: flex; gap: 8px; }
+.aw-ho ol i { flex: none; width: 20px; height: 20px; border-radius: 50%; background: #E7F8F2; color: var(--wa-head); font: 700 12px/20px inherit; font-style: normal; text-align: center; }
+.aw-ho .ho-st { margin-top: 8px; font-size: 12.5px; color: var(--wa-sub); display: flex; align-items: center; gap: 6px; }
+.aw-ho .ho-st .dot { width: 8px; height: 8px; border-radius: 50%; background: #25D366; animation: aw-pulse 1.6s infinite; }
+@keyframes aw-pulse { 50% { opacity: .35; } }
+.aw-pick { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.aw-big { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; border: 0; border-radius: 10px; background: var(--wa-send); color: #fff;
+  font: 600 15px/1 inherit; font-family: inherit; cursor: pointer; }
+.aw-big svg { width: 20px; height: 20px; }
+.aw-link { border: 0; background: none; padding: 4px 0; color: var(--wa-link); font: 500 13.5px/18px inherit; font-family: inherit; cursor: pointer; text-align: left; }
+.aw-help { margin: 0; padding: 8px 10px; border-radius: 8px; background: #FFF8E6; font-size: 13px; line-height: 18px; color: #54656F; }
+.aw-help ol { margin: 4px 0 0; padding-left: 18px; }
+.aw-disc { display: inline-block; margin-top: 6px; padding: 2px 8px; border-radius: 99px; background: #FFEECD; color: #7A5B12; font-size: 11.5px; font-weight: 600; }
+
+/* a file card (what to send, and where) */
+.aw-drop { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1.5px dashed #B8C4CA; border-radius: 10px; background: #FAFBFB; color: #3B4A54; cursor: pointer; }
+.aw-drop:hover, .aw-drop.is-over { border-color: var(--wa-send); background: #EFFAF6; }
+.aw-drop svg { width: 22px; height: 22px; flex: none; color: var(--wa-sub); }
+.aw-drop span { display: flex; flex-direction: column; font-size: 13.5px; line-height: 18px; }
+.aw-drop small { color: var(--wa-sub); font-size: 12px; }
+.aw-qrline { display: flex; gap: 10px; align-items: center; margin-top: 8px; font-size: 12.5px; color: var(--wa-sub); }
+.aw-qrline .ho-qr { width: 76px; height: 76px; padding: 4px; border-radius: 8px; background: #fff; box-shadow: var(--wa-shadow); flex: none; }
+.aw-qrline .ho-qr svg { display: block; width: 100%; height: 100%; }
+
+/* products read from his file */
+.aw-prod { width: 100%; border-collapse: collapse; font-size: 12.5px; line-height: 16px; }
+.aw-prod th { text-align: left; font-weight: 600; color: var(--wa-sub); padding: 4px 6px; border-bottom: 1px solid var(--wa-line); white-space: nowrap; }
+.aw-prod td { padding: 5px 6px; border-bottom: 1px solid #F0F2F5; vertical-align: top; }
+.aw-prod td.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.aw-prod .m { display: block; color: #0A7C5A; font-size: 11.5px; }
+.aw-prod .m.is-new { color: #8A5A00; }
+.aw-prod .no { color: #B3261E; }
+.aw-more { margin-top: 4px; font-size: 12px; color: var(--wa-sub); }
+
+/* the store, summed up */
+.aw-store { border-radius: 10px; overflow: hidden; border: 1px solid var(--wa-line); background: #fff; }
+.aw-store .st-head { display: flex; align-items: center; gap: 10px; padding: 12px; background: linear-gradient(135deg, #E7F8F2, #F7FBF9); }
+.aw-store .st-head img { width: 34px; height: 34px; }
+.aw-store .st-head b { display: block; font-size: 15.5px; }
+.aw-store .st-head small { color: var(--wa-sub); font-size: 12.5px; }
+.aw-store .st-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
+.aw-store .st-grid div { padding: 10px 8px; text-align: center; border-top: 1px solid var(--wa-line); }
+.aw-store .st-grid div + div { border-left: 1px solid var(--wa-line); }
+.aw-store .st-grid b { display: block; font-size: 20px; line-height: 24px; font-variant-numeric: tabular-nums; }
+.aw-store .st-grid small { font-size: 11.5px; color: var(--wa-sub); }
+
+/* ── the message box: 📎 beside it ─────────────────────────────────────── */
+.cb-clip { display: grid; place-items: center; width: 46px; height: 46px; flex: none; padding: 0; border: 0; border-radius: 50%; background: #fff; color: #54656F;
+  box-shadow: var(--wa-shadow); cursor: pointer; }
+.cb-clip svg { width: 22px; height: 22px; transform: rotate(-45deg); }
+.cb-clip:hover { color: var(--wa-head); }
+textarea.cb-input { box-sizing: border-box; resize: none; display: block; padding: 13px 18px; height: 46px; max-height: 120px; line-height: 20px; overflow-y: auto; }
+.cb-hi { position: absolute; left: 50%; bottom: 74px; transform: translateX(-50%); display: flex; gap: 8px; }
+.cb-hi button { padding: 9px 16px; border: 0; border-radius: 18px; background: #fff; box-shadow: var(--wa-shadow); color: var(--wa-ink); font: 500 15px/1 inherit; font-family: inherit; cursor: pointer; }
+.cb-hi button:hover { background: #F5F6F6; }
+.cb-dropzone { position: absolute; inset: 60px 0 0; z-index: 3; display: none; place-items: center; background: rgba(0, 128, 105, .12); border: 3px dashed var(--wa-send);
+  font: 600 18px/1 inherit; color: var(--wa-head); }
+.cb-chat.is-dragging .cb-dropzone { display: grid; }
+
+/* ── sheets with a form (who is who, check products, pick customers) ──── */
+.cb-sheet.is-form { max-height: 88%; display: flex; flex-direction: column; }
+.cb-sheet.is-form .cb-rows { flex: 1; overflow-y: auto; }
+.sf-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-top: 1px solid var(--wa-line); }
+.sf-row:first-child { border-top: 0; }
+.sf-av { width: 36px; height: 36px; flex: none; border-radius: 50%; display: grid; place-items: center; background: #DFE5E7; color: #54656F; font: 600 14px/1 inherit; }
+.sf-who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sf-who b { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sf-who small { font-size: 12.5px; color: var(--wa-sub); }
+.sf-seg { display: grid; grid-template-columns: repeat(4, auto); gap: 2px; padding: 2px; border-radius: 9px; background: #F0F2F5; flex: none; }
+.sf-seg label { position: relative; padding: 6px 8px; border-radius: 7px; font-size: 12.5px; color: #3B4A54; cursor: pointer; white-space: nowrap; }
+.sf-seg input { position: absolute; opacity: 0; pointer-events: none; }
+.sf-seg label:has(input:checked) { background: #fff; color: var(--wa-head); font-weight: 600; box-shadow: var(--wa-shadow); }
+.sf-seg label:has(input:focus-visible) { outline: 2px solid var(--wa-link); }
+@media (max-width: 520px) { .sf-row { flex-wrap: wrap; } .sf-seg { width: 100%; grid-template-columns: repeat(4, 1fr); } .sf-seg label { text-align: center; } }
+.sf-foot { flex: none; display: flex; gap: 8px; align-items: center; padding: 10px 16px calc(10px + var(--safe, 0px)); border-top: 1px solid var(--wa-line); background: #fff; }
+.sf-foot .sf-n { flex: 1; font-size: 13px; color: var(--wa-sub); }
+.sf-foot button { min-width: 120px; height: 44px; border: 0; border-radius: 22px; background: var(--wa-send); color: #fff; font: 600 15px/1 inherit; font-family: inherit; cursor: pointer; }
+/* check products: a plain form, every field editable in place (the owner's "plain familiar forms") */
+.pf { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.pf th { position: sticky; top: 0; background: #fff; text-align: left; font-weight: 600; font-size: 12px; color: var(--wa-sub); padding: 8px 6px; border-bottom: 1px solid var(--wa-line); }
+.pf td { padding: 4px 6px; border-bottom: 1px solid #F0F2F5; }
+.pf td:first-child, .pf th:first-child { padding-left: 16px; width: 28px; }
+.pf input[type=text], .pf input[type=number] { width: 100%; height: 34px; padding: 0 8px; border: 1px solid #E1E6E8; border-radius: 6px; font: inherit; color: var(--wa-ink); background: #fff; }
+.pf input[type=number] { width: 78px; }
+.pf input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--wa-send); }
+.pf .m { font-size: 11.5px; color: #0A7C5A; }
+.pf .m.is-new { color: #8A5A00; }
+.pf tr.is-off input[type=text], .pf tr.is-off input[type=number] { opacity: .45; }
+.pf-wrap { overflow-x: auto; }
+
+/* the outbox / sent lists on the hub's own screens use plain styles there */
+
+/* v8 (addendum-016): 🎤 where the box is empty, send where it has words — as WhatsApp */
+.cb-mic { display: grid; place-items: center; width: 46px; height: 46px; flex: none; padding: 0; border: 0; border-radius: 50%;
+  background: var(--wa-send); color: #fff; cursor: pointer; box-shadow: var(--wa-shadow); }
+.cb-mic svg { width: 22px; height: 22px; }
+.cb-mic.is-on { background: #E53935; animation: cb-rec 1.2s ease-in-out infinite; }
+@keyframes cb-rec { 50% { box-shadow: 0 0 0 8px rgba(229, 57, 53, .18); } }
+.cb-bar.has-text .cb-mic, .cb-bar:not(.has-text) .cb-send { display: none; }
+html.has-wa .cb-mic { width: 42px; height: 42px; background: none; color: var(--wa-icon); }
+html.has-wa .cb-mic:hover { background: rgba(11, 20, 26, .07); }
+html.has-wa .cb-mic.is-on { background: #E53935; color: #fff; }
+
+/* v10 (addendum-019): the store build, one card ticked in place (look b) */
+.aw-prog { border-radius: 10px; overflow: hidden; border: 1px solid var(--wa-line); background: #fff; }
+.aw-prog .pg-head { display: flex; align-items: center; gap: 10px; padding: 12px; background: linear-gradient(135deg, #E7F8F2, #F7FBF9); }
+.aw-prog .pg-head img { width: 34px; height: 34px; }
+.aw-prog .pg-head b { display: block; font-size: 15.5px; }
+.aw-prog .pg-head small { color: var(--wa-sub); font-size: 12.5px; }
+.aw-prog .pg-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-top: 1px solid var(--wa-line); }
+.aw-prog .pg-ic { flex: 0 0 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; color: #fff; background: var(--wa-line); }
+.aw-prog .is-done .pg-ic { background: var(--wa-send); }
+.aw-prog .is-none .pg-ic { background: #C9D1D6; }
+.aw-prog .is-stopped .pg-ic { background: #E0A030; }   /* v10.1: the team finishes this step */
+.aw-prog .is-running .pg-ic { background: none; border: 2.5px solid var(--wa-line); border-top-color: var(--wa-send); animation: pg-spin .9s linear infinite; }
+.aw-prog .pg-lb { flex: 1; min-width: 0; }
+.aw-prog .pg-lb b { display: block; font-weight: 500; font-size: 14px; }
+.aw-prog .is-todo .pg-lb b { color: var(--wa-sub); }
+.aw-prog .pg-lb small { color: var(--wa-sub); font-size: 12.5px; }
+.aw-prog .pg-lb .pg-warn { display: block; color: #B26A00; font-size: 12.5px; }
+.aw-prog .pg-foot { padding: 10px 12px; border-top: 1px solid var(--wa-line); color: var(--wa-ink); font-size: 14px; line-height: 19px; background: #F7FBF9; }
+@keyframes pg-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .aw-prog .is-running .pg-ic { animation: none; border-top-color: var(--wa-line); background: var(--wa-send); } }
+/* the store, logged in */
+.aw-prog .pg-btn { display: table; margin-top: 6px; padding: 7px 14px; border-radius: 18px; background: var(--wa-send); color: #fff; font-weight: 500; font-size: 14px; text-decoration: none; }

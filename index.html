@@ -1,83 +1,40 @@
 <!doctype html>
-<!--
-  DISCOVERY WIRING — Foodbridge Module Product Management (v5 baseline, Addendum 006)
-  ---------------------------------------------------------------------------------
-  This file is the WIRING only — the hub + transition map. It holds NO screen content;
-  screens live in screens/. v5 reproduces the DEVELOPED module (development/frontend/src)
-  screen for screen, so the next discovery loop starts from what ships.
-  Rules:
-  - HTML/CSS/vanilla JS only. No framework, no build step at view time. assets/pm-core.js
-    and assets/module.css are generated snapshots of the module's own logic/styles
-    (discovery/tools/build-assets.mjs) — regenerate, don't hand-edit.
-  - Open through a static server (seed-data/seed.json is fetched):
-      cd discovery && python -m http.server 4190   →   http://127.0.0.1:4190/
-  - Data: seed-data/seed.json (the sandbox's own fixtures, dumped by tools/dump-seed.mjs).
-  - Parity with the module is checked by tools/parity.mjs against `npm run sandbox`.
-  - Disposable. When accepted, snapshot screens/ + assets/ + index.html + seed-data into
-    versions/v5/. Nothing here is imported by development/.
--->
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Product Management Discovery</title>
-  <style>
-    :root { color-scheme: light dark; }
-    body { font-family: system-ui, sans-serif; margin: 0; padding: 2rem; max-width: 820px; background: #fff; color: #111; }
-    @media (prefers-color-scheme: dark) { body { background: #111827; color: #f3f4f6; } th, td { border-color: #374151 !important; } a { color: #60a5fa !important; } }
-    h1 { font-size: 1.25rem; }
-    h2 { font-size: 1rem; margin-top: 1.75rem; }
-    .note { color: #6b7280; font-size: 0.85rem; }
-    a { color: #06c; }
-    table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
-    th, td { border: 1px solid #ddd; padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
-    code { font-size: 0.85em; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FoodBridge Assistant Discovery</title>
+<link rel="icon" href="screens/favicon.ico">
+<style>
+:root { --bg: #f4f6f5; --card: #fff; --ink: #1b2420; --mute: #5f6b66; --line: #d5dcd8; --acc: #0f6b3c; --tag: #e3f4ea; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #111614; --card: #1a211e; --ink: #e4ebe7; --mute: #9aa7a1; --line: #2c3632; --acc: #8fd6ac; --tag: #183325; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 28px 16px 48px; }
+h1 { font-size: 22px; margin: 0 0 6px; }
+.sub { color: var(--mute); margin: 0 0 18px; }
+.tag { display: inline-block; font-size: 12px; font-weight: 700; color: var(--acc); background: var(--tag); padding: 2px 9px; border-radius: 99px; }
+.open { display: grid; gap: 10px; }
+.open a { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; color: inherit; text-decoration: none; }
+.open a:hover { border-color: var(--acc); }
+.open b { color: var(--acc); }
+.open small { display: block; color: var(--mute); margin-top: 2px; }
+.note { color: var(--mute); font-size: 13px; margin-top: 18px; }
+</style>
 </head>
 <body>
-  <h1>Foodbridge Module Product Management — Discovery v6 (Finished Goods workspace, in progress)</h1>
-  <p class="note"><b>v6 (Addendum 007):</b> Products and Product detail are the new operational workspace —
-  Find → Select → Act → Impact → Confirm. Every other screen is still the v5 baseline (locked in <code>versions/v5/</code>).
-  Try: filter → “Select all N results” → Bulk Action → Change selling price → Preview → Apply → Undo; the Needs Attention chips;
-  Bulk Actions with nothing selected (selection methods); a row’s ⋮ menu; <kbd>/</kbd> and <kbd>?</kbd> for shortcuts.</p>
-  <p class="note">Every screen below is a hand port of the module's React components, mounted the way the host
-  (storefront-frontend) mounts them, driven by the module's own mock API client and the sandbox's seed data.
-  The design notes live in the private module repo (Addendum 006).</p>
-
-  <h2>Screens</h2>
-  <table>
-    <tr><th>Screen</th><th>Module component</th><th>Host route</th></tr>
-    <tr><td><a href="screens/products-list.html">Products (Finished Goods)</a> — <b>v6</b></td><td><code>ProductListShell</code> + v6 workspace (<code>assets/ui/fg-workspace.js</code>)</td><td><code>/products</code></td></tr>
-    <tr><td><a href="screens/product-detail.html?id=sb-12">Product detail</a> — <b>v6</b></td><td><code>ProductDetailPage</code> → v6 tabs</td><td><code>/product/:id</code></td></tr>
-    <tr><td><a href="screens/raw-materials-list.html">Raw Materials</a></td><td><code>ProductListShell</code> catalogueType=RAW-MATERIAL</td><td><code>/raw-materials</code></td></tr>
-    <tr><td><a href="screens/product-detail.html?type=raw&amp;id=rm-1">Raw Material detail</a></td><td><code>ProductDetailPage</code> (RAW-MATERIAL)</td><td><code>/raw-materials/:id</code></td></tr>
-    <tr><td><a href="screens/category-list.html">Product Categories</a></td><td><code>CategoryListShell</code></td><td><code>/categories</code></td></tr>
-    <tr><td><a href="screens/catalogue-list.html">Catalog</a></td><td><code>CatalogueListShell</code></td><td><code>/catalog</code></td></tr>
-    <tr><td><a href="screens/image-gallery.html">Image Gallery</a></td><td><code>ImageDirectoryShell</code></td><td><code>/image-directory</code></td></tr>
-  </table>
-
-  <h2>Transition map (screen level)</h2>
-  <table>
-    <tr><th>From</th><th>Trigger</th><th>To</th></tr>
-    <tr><td>Products (v6)</td><td>Bulk Actions with nothing selected</td><td>Select products: search &amp; add, filter, catalogue, supplier / brand, smart rules, needs attention, recently changed, SKU paste / file, saved selections</td></tr>
-    <tr><td>Products (v6)</td><td>selection bar → View selected / Bulk Action</td><td>Selected products drawer → grouped Bulk Actions → wizard (Configure → Preview &amp; impact → Done / Undo)</td></tr>
-    <tr><td>Products (v6)</td><td>Needs attention chip → CTA; row ⋮; keys P / T / I</td><td>The same wizard for that set or one product; Possible duplicates → review</td></tr>
-    <tr><td>Products (v6)</td><td>Add Product</td><td>Quick add; “Add in detail” → v5 product drawer</td></tr>
-    <tr><td>Products / Raw Materials list</td><td>product name, row eye icon, mobile card eye</td><td>Product detail</td></tr>
-    <tr><td>Product detail</td><td>breadcrumb</td><td>Products / Raw Materials list</td></tr>
-    <tr><td>Products / Raw Materials list, Product detail</td><td>Add / Edit</td><td>Product drawer → Unit &amp; Price modal, Add Category modal, Browse Gallery, Take Photo</td></tr>
-    <tr><td>Products list</td><td>Bulk Action</td><td>Recategorize drawer (→ Add Category modal), inline Update prices (→ Unit &amp; Price modal), Assign tags drawer, Delete confirm</td></tr>
-    <tr><td>Products list</td><td>Import / Export</td><td>Import popup → Preview Import modal; Export CSV/Excel; Sync from Zoho → Last Zoho sync modal</td></tr>
-    <tr><td>Catalog list</td><td>Add / Edit</td><td>Catalogue drawer: Basic Info → Select Products → Set Pricing (→ Unit &amp; Price modal)</td></tr>
-    <tr><td>Catalog list</td><td>row Send / Import / Export</td><td>Create Campaign Links modal; pricing CSV preview; CSV download</td></tr>
-    <tr><td>Product Categories list</td><td>Add / Edit / Import</td><td>Category drawer; Import panel → Preview Categories modal</td></tr>
-    <tr><td>Image Gallery</td><td>Add images / card menu / Upload images to products</td><td>Upload drawer, Take photos overlay (→ cropper, My Photos), Add tags / Link product drawers, By-product view → Manage product images drawer</td></tr>
-  </table>
-
-  <h2>Discovery controls</h2>
-  <p class="note">Each screen has a small “Discovery controls (not module UI)” tab on its left edge. It sets the host inputs the
-  module reads — currency, <code>appProp.supportedUnitIndexLevel</code> / <code>priceCalculationUnitIndex</code>,
-  <code>globalSetting…zohoSyncEnabled</code> — and seed scenarios the sandbox seed never produces (catalogues with customers,
-  Zoho sync outcomes). Defaults match the sandbox.</p>
+<main>
+  <h1>FoodBridge Assistant — chat onboarding</h1>
+  <p class="sub">A distributor sets up his store in a WhatsApp-style chat, in everyday Hinglish, one question at a time.
+    <span class="tag">v11 draft — for team review</span></p>
+  <div class="open">
+    <a href="screens/chat.html?device=phone"><b>Open the chat (as on a phone) ↗</b><small>Best in a phone-sized window. Welcome → Naya store banayein → 6 steps → summary → the store being built.</small></a>
+    <a href="screens/chat.html"><b>Open the chat (desktop) ↗</b><small>WhatsApp Web style: chats, the conversation, your store setup.</small></a>
+    <a href="screens/chat.html?reset"><b>↺ Reset everything</b><small>A clean demo: the chat, the answers, the files and every saved store in this browser are deleted. Also in the chat's ⋮ menu.</small></a>
+    <a href="screens/sent.html"><b>What reached FoodBridge ↗</b><small>The stores sent with <i>Store banayein</i>.</small></a>
+  </div>
+  <p class="note">Everything runs in your browser: nothing is sent anywhere, no real store is created. Try a contacts file with
+    the sample Excel offered at step 6/6. "Naye se shuru" keeps the store saved under your mobile number (as the real app does); use Reset everything for a clean start.</p>
+</main>
 </body>
 </html>
