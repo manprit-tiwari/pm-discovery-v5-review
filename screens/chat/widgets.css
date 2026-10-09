@@ -37,6 +37,7 @@ html.as-panel .cb-chat { z-index: 90; }
 .aw select, .aw input[type=text], .aw input[type=number] { flex: 1; min-width: 0; height: 40px; padding: 0 10px; border: 1px solid #D1D7DB; border-radius: 8px; background: #fff;
   font: inherit; color: var(--wa-ink); }
 .aw select:focus, .aw input:focus { outline: none; border-color: var(--wa-send); box-shadow: 0 0 0 2px rgba(0, 168, 132, .25); }
+.aw-in.is-upper { text-transform: uppercase; } .aw-in.is-upper::placeholder { text-transform: none; }
 .aw-go { height: 40px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--wa-send); color: #fff; font: 600 14px/1 inherit; font-family: inherit; cursor: pointer; }
 .aw-go:disabled { opacity: .5; cursor: default; }
 .aw-go.is-quiet { background: #F0F2F5; color: var(--wa-link); }

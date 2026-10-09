@@ -120,15 +120,15 @@
         '<button type="button" class="cb-hbtn cb-back" data-close aria-label="Close chat">' + I.back + "</button>" +
         '<span class="cb-ava" style="background-image:url(' + MASCOT + 'hello-128.png)" aria-hidden="true"></span>' +
         '<span class="cb-who"><b>FoodBridge Assistant</b><small class="cb-status"></small></span>' +
-        '<button type="button" class="cb-hbtn cb-info" data-info aria-label="Aapka store setup" title="Aapka store setup">' + I.info + "</button>" +
+        '<button type="button" class="cb-hbtn cb-info" data-info aria-label="आपका store setup" title="आपका store setup">' + I.info + "</button>" +
         '<button type="button" class="cb-hbtn cb-more" data-menu aria-label="More">' + I.more + "</button>" +
         (MODE === "tower" ? '<button type="button" class="cb-hbtn cb-x" data-close aria-label="Close chat">' + I.close + "</button>" : "") +
       "</header>" +
       '<div class="cb-body" role="log" aria-live="polite" aria-label="Conversation"></div>' +
       '<div class="cb-hi" hidden></div>' +
       '<form class="cb-bar" autocomplete="off">' +
-        '<button type="button" class="cb-clip" data-clip aria-label="File bhejiye">' + I.clip + "</button>" +
-        '<textarea class="cb-input" rows="1" enterkeyhint="send" placeholder="Message likhiye" aria-label="Message the assistant" maxlength="2000"></textarea>' +
+        '<button type="button" class="cb-clip" data-clip aria-label="File भेजिए">' + I.clip + "</button>" +
+        '<textarea class="cb-input" rows="1" enterkeyhint="send" placeholder="Message लिखिए" aria-label="Message the assistant" maxlength="2000"></textarea>' +
         '<button type="button" class="cb-mic" data-mic aria-label="Speak">' + I.mic + "</button>" +
         '<button type="submit" class="cb-send" aria-label="Send" disabled>' + I.send + "</button>" +
       "</form>" +
@@ -141,6 +141,8 @@
 
     root.addEventListener("click", onClick);
     root.addEventListener("change", onChange);
+    root.addEventListener("input", function (e) { if (e.target.matches(".aw-in")) $(".aw-go", e.target.closest(".aw")).disabled = !e.target.value.trim(); });
+    root.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.isComposing && e.target.matches(".aw-in")) { e.preventDefault(); $(".aw-go", e.target.closest(".aw")).click(); } });
     input.addEventListener("input", function () { barState(); grow(); });
     input.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit(); } });
     $(".cb-bar", root).addEventListener("submit", function (e) { e.preventDefault(); submit(); });
@@ -199,7 +201,7 @@
   }
   function typing(on) {
     isTyping = on;
-    if (VIEW === "assistant") status.textContent = on ? "likh raha hai…" : "";
+    if (VIEW === "assistant") status.textContent = on ? "लिख रहा है…" : "";
     renderSide();
     const t = $(".cb-typing", body);
     if (on && !t) { body.insertAdjacentHTML("beforeend", '<div class="cb-row in"><div class="cb-bub cb-typing" aria-label="typing"><i></i><i></i><i></i></div></div>'); stick(); }
@@ -211,7 +213,7 @@
     const lastBot = msgs.slice().reverse().find(function (m) { return m.from === "bot"; });
     const c = last && last === lastBot ? last.compose : null;
     /* v8: on a question with choices, he may type or say anything instead (addendum-016) */
-    input.placeholder = c ? c.hint : inFlow() && FLOW.NO_COMMENT.indexOf(F.at) < 0 ? "Ya type kariye / 🎤 boliye" : "Message likhiye";
+    input.placeholder = c ? c.hint : inFlow() && FLOW.NO_COMMENT.indexOf(F.at) < 0 ? "या type करिए / 🎤 बोलिए" : "Message लिखिए";
     input.setAttribute("inputmode", c && c.type === "tel" ? "tel" : "text");
     input.setAttribute("autocapitalize", c && c.type === "upper" ? "characters" : "sentences");
   }
@@ -222,7 +224,7 @@
      his audio to its maker's service: discovery only; in production the Digital Assistant transcribes. */
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   let rec = null, rcd = null;
-  function micUi(on) { const b = $(".cb-mic", root); if (b) b.classList.toggle("is-on", on); if (on) input.placeholder = "Sun raha hoon… rokne ke liye 🎤 dabaiye"; else composeFor(); }
+  function micUi(on) { const b = $(".cb-mic", root); if (b) b.classList.toggle("is-on", on); if (on) input.placeholder = "सुन रहा हूँ… रोकने के लिए 🎤 दबाइए"; else composeFor(); }
   function mic() {
     if (rec) { rec.stop(); return; }
     if (rcd) { rcd.stop(); return; }
@@ -237,9 +239,9 @@
     try { rec.start(); micUi(true); } catch (e) { rec = null; recordNote(); }
   }
   async function recordNote() {
-    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder)) return say([FLOW.txt("🎤 Not on this browser. Type instead.")]);
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder)) return say([FLOW.txt("🎤 इस browser में voice note नहीं चलेगा। लिख कर भेजिए।")]);
     let stream;
-    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) { return say([FLOW.txt("🎤 No microphone. Type instead.")]); }
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) { return say([FLOW.txt("🎤 Microphone नहीं मिला। लिख कर भेजिए।")]); }
     const chunks = [];
     rcd = new MediaRecorder(stream);
     rcd.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
@@ -259,10 +261,10 @@
     mine({ kind: "file", name: "🎤 Voice note", size: f.size });
     const p = await OB.take(X, M, null, S, f, at);
     save();
-    if (!p || p.error) return say([FLOW.txt("⚠️ Bahut lamba hai. Thoda chhota bhejiye.")]);
+    if (!p || p.error) return say([FLOW.txt("⚠️ बहुत लंबा है। थोड़ा छोटा भेजिए।")]);
     const out = inFlow() ? FLOW.commentOn(ctx(), "🎤 Voice note: " + p.file) : null;
     if (out) { save(); await say(out); return; }
-    say([FLOW.txt("🎤 Voice note saved.")]);
+    say([FLOW.txt("🎤 Voice note मिल गया।")]);
   }
   window.ASSIST_VOICE = { keep: keepVoice };   // discovery: lets a test hand in a recording where there is no microphone
 
@@ -277,7 +279,7 @@
   const W_SETUP = /\b(set ?up|setup|onboard|onboarding|start|shuru|register|new store|create (my )?store|store banao|dukaan|dukan)\b/i;
   const W_HELP = /\b(how|help|madad|kaise|what can you do)\b/i;
   const W_MENU = /^(menu|main menu|0|options)$/i;
-  const W_HI = /^(hi+|hello|hey|hii+|namaste|namaskar|ram ram|good (morning|evening|afternoon)|sat sri akal)\b/i;
+  const W_HI = /^(hi+|hello|hey|hii+|namaste|namaskar|ram ram|good (morning|evening|afternoon)|sat sri akal)\b|^(नमस्ते|नमस्कार|राम राम)(\s|$)/i;
 
   function inFlow() { return F.at && F.at !== "done" && FLOW_NODES.indexOf(F.at) >= 0; }
   function routeText(input) {
@@ -293,7 +295,7 @@
     if (MODE === "tower") { const r = BRAIN.reply({ text: t, quiet: true }, towerCtx()); if (r) return say(r); }
     if (W_HI.test(t)) return say(welcome());
     if (W_HELP.test(t)) return say(help());
-    say([{ kind: "sticker", image: "shrug.png", alt: "Not sure" }, Object.assign(mainMenu(), { text: "Sorry, samajh nahi aaya 🙏\n" + mainMenu().text })]);
+    say([{ kind: "sticker", image: "shrug.png", alt: "Not sure" }, Object.assign(mainMenu(), { text: "Sorry, समझ नहीं आया 🙏\n" + mainMenu().text })]);
   }
 
   /* One answer to the question in hand → the tree → what it says, and any hook it names. */
@@ -305,7 +307,7 @@
     if (r.hook) {
       await say(r.msgs);
       try { await HOOKS[r.hook](); }
-      catch (e) { console.warn(r.hook, e); say([FLOW.txt("⚠️ Yeh nahi hua. Phir se try kariye.")]); }
+      catch (e) { console.warn(r.hook, e); say([FLOW.txt("⚠️ यह नहीं हुआ। फिर से try करिए।")]); }
       return;
     }
     await say(r.msgs);
@@ -346,7 +348,7 @@
       /* Every file he added is in S3 before the store is built (audio keeps the byte fallback). Not yet: say which, build later. */
       const missing = OB.retry ? S.papers.filter(function (p) { return !/^audio\//.test(p.mime || "") && !p.fileId && p.up !== "unsupported"; }) : [];
       if (missing.length) {
-        return say([FLOW.txt(missing.length + " file(s) aren't uploaded yet: " + missing.map(function (p) { return p.name; }).join(", "), { buttons: [{ id: "retry:files", label: "Retry" }] })]);
+        return say([FLOW.txt(missing.length + " file अभी upload नहीं हुई: " + missing.map(function (p) { return p.name; }).join(", "), { buttons: [{ id: "retry:files", label: "फिर से try" }] })]);
       }
       typing(true);
       const b = await OB.make(CAT, X, S);
@@ -370,7 +372,7 @@
   const POLL_MS = 3000, POLL_MAX = 400;
   /* what he gave, for the discovery stand-in only (production has it from the assistant's writes) */
   function planOf() {
-    const f = FLOW.facts(ctx()), by = function (t) { return f.notAdded.filter(function (p) { return p.type === t; }).map(function (p) { return { name: p.name, why: (p.phone || "no number") + " is not a phone number" }; }); };
+    const f = FLOW.facts(ctx()), by = function (t) { return f.notAdded.filter(function (p) { return p.type === t; }).map(function (p) { return { name: p.name, why: p.phone ? p.phone + " सही mobile number नहीं है" : "mobile number नहीं है" }; }); };
     const na = { customers: by("shop"), suppliers: by("supplier"), staff: by("staff") };
     return { at: Date.now(), products: f.products + 17 * f.productFiles, customers: f.customers - na.customers.length, suppliers: f.suppliers - na.suppliers.length, staff: f.staff - na.staff.length, notAdded: na };
   }
@@ -399,7 +401,7 @@
 
   /* v7 (D-2): a store option → the Digital Assistant's login link for that screen. Not connected → says so, a sample. */
   async function storeLink(id) {
-    if (!isReady()) return say([FLOW.txt("Aapka store ban raha hai. Ready hote hi yahin bataunga.")]);
+    if (!isReady()) return say([FLOW.txt("आपका store बन रहा है। Ready होते ही यहीं बताऊँगा।")]);
     const a = FLOW.STORE_ACTIONS.find(function (x) { return x.id === id; });
     typing(true);
     let j = null;
@@ -437,31 +439,31 @@
   function isReady() { return F.at === "done" && !!F.readyFor; }
   function welcome() {
     if (isReady()) return FLOW.ready(ctx());
-    if (F.at === "done") return [FLOW.txt("Namaste 🙏 Aapka store ban raha hai. Ready hote hi yahin bataunga.")];
-    if (started() && inFlow()) return [FLOW.txt("Welcome back 🙏 Jahan chhoda tha wahin se continue karein?", { buttons: [{ id: "intent:carry", label: "Continue" }, { id: "intent:restart", label: "Naye se shuru" }] })];
-    return [{ kind: "image", image: "present.png", alt: "The FoodBridge Assistant", text: "Namaste 🙏 Main *FoodBridge Assistant* hoon." },
+    if (F.at === "done") return [FLOW.txt("नमस्ते 🙏 आपका store बन रहा है। Ready होते ही यहीं बताऊँगा।")];
+    if (started() && inFlow()) return [FLOW.txt("Welcome back 🙏 जहाँ छोड़ा था वहीं से continue करें?", { buttons: [{ id: "intent:carry", label: "Continue" }, { id: "intent:restart", label: "नए से शुरू" }] })];
+    return [{ kind: "image", image: "present.png", alt: "The FoodBridge Assistant", text: "नमस्ते 🙏 मैं *FoodBridge Assistant* हूँ।" },
       /* v11 (owner): store setup is the first of the assistant's jobs, not the only one — he picks what to do */
-      FLOW.txt("Bataiye, aaj kya karna hai?", { buttons: [{ id: "intent:setup", label: "Naya store banayein" }] })];
+      FLOW.txt("बताइए, आज क्या करना है?", { buttons: [{ id: "intent:setup", label: "नया store बनाएँ" }] })];
   }
   function help() {
-    return [FLOW.txt("Neeche se chuniye kya karna hai. Button dabaiye, type kariye ya 🎤 boliye. File 📎 se bhejiye.", { buttons: [{ id: "intent:setup", label: "Naya store banayein" }] })];
+    return [FLOW.txt("नीचे से चुनिए क्या करना है। Button दबाइए, type करिए या 🎤 बोलिए। File 📎 से भेजिए।", { buttons: [{ id: "intent:setup", label: "नया store बनाएँ" }] })];
   }
   function mainMenu() {
     if (isReady() && MODE !== "tower") return FLOW.storeMenu();
     let rows;
     if (isReady()) rows = FLOW.STORE_ACTIONS.map(function (a) { return { id: a.id, label: a.label }; });
     else if (F.at === "done") rows = [];
-    else if (inFlow()) rows = [{ id: "intent:carry", label: "Continue" }, { id: "intent:restart", label: "Naye se shuru" }];
-    else rows = [{ id: "intent:setup", label: "Naya store banayein" }];
+    else if (inFlow()) rows = [{ id: "intent:carry", label: "Continue" }, { id: "intent:restart", label: "नए से शुरू" }];
+    else rows = [{ id: "intent:setup", label: "नया store बनाएँ" }];
     if (MODE === "tower") rows = BRAIN.MENU.map(function (m) { return { id: "intent:" + m.id, label: m.label }; }).concat(rows);
     rows.forEach(function (r, i) { r.n = i + 1; });
-    if (!rows.length) return FLOW.txt("Aapka store ban raha hai. Ready hote hi yahin bataunga.");
-    return FLOW.txt("Number likh kar bhejiye:\n" + rows.map(function (r) { return r.n + "  " + r.label; }).join("\n"),
+    if (!rows.length) return FLOW.txt("आपका store बन रहा है। Ready होते ही यहीं बताऊँगा।");
+    return FLOW.txt("Number लिख कर भेजिए:\n" + rows.map(function (r) { return r.n + "  " + r.label; }).join("\n"),
       { list: { button: "Menu", title: "Menu", rows: rows }, numbered: rows.map(function (r) { return { id: r.id, label: r.label }; }) });
   }
   function startSetup() {
     if (isReady()) return say(FLOW.ready(ctx()));
-    if (F.at === "done") return say([FLOW.txt("Aapka store ban raha hai. Ready hote hi yahin bataunga.")]);
+    if (F.at === "done") return say([FLOW.txt("आपका store बन रहा है। Ready होते ही यहीं बताऊँगा।")]);
     if (inFlow()) return say(FLOW.ask(ctx(), F.at));
     F.at = null; save();
     return say(FLOW.ask(ctx(), "mobile"));
@@ -470,7 +472,7 @@
     const keep = msgs.slice(-1);
     S = M.blank(); F = blankF(); msgs = keep;
     save();
-    say([FLOW.txt("Theek hai, naye se shuru karte hain.")].concat(FLOW.ask(ctx(), "mobile")));
+    say([FLOW.txt("ठीक है, नए से शुरू करते हैं।")].concat(FLOW.ask(ctx(), "mobile")));
   }
   /* The tower's own answers (tower mode): the Vasu Foods snapshot (seed-data/tower-snapshot.json). */
   let SNAP = null;
@@ -548,6 +550,7 @@
   /* Widget actions. */
   const ACT = {
     select: function (el) { const w = el.closest(".aw"), s = $("select", w); if (!s.value) return; mine(s.options[s.selectedIndex].text); answer({ value: s.value }); },
+    input: function (el) { const f = $(".aw-in", el.closest(".aw")), v = f.value.trim(); if (!v) return; mine(f.classList.contains("is-upper") ? v.toUpperCase() : v); answer({ text: v }); },
     multi: function (el) {
       const w = el.closest(".aw"), on = Array.from(w.querySelectorAll("input:checked"));
       if (!on.length) return;
@@ -594,7 +597,7 @@
       path.reduce(function (p, st) { return p.then(function () { return api("/api/tickets", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: id, status: st }) }); }); }, Promise.resolve())
         .then(loadBuilds, loadBuilds);
     },
-    more: function (el) { closeSheet(); const k = el.dataset.k; if (k === "feedback") return window.FBFeedback.open(); if (k === "reset") { if (confirm("Reset everything? The chat, his answers, the files and every saved store and build in this browser are deleted.")) window.FB_RESET(); return; } if (k === "restart") { mine("Naye se shuru"); restart(); } else if (k === "sent") {
+    more: function (el) { closeSheet(); const k = el.dataset.k; if (k === "feedback") return window.FBFeedback.open(); if (k === "reset") { if (confirm("Reset everything? The chat, his answers, the files and every saved store and build in this browser are deleted.")) window.FB_RESET(); return; } if (k === "restart") { mine("नए से शुरू"); restart(); } else if (k === "sent") {
       /* the desktop has the Team chat; the phone and the tower panel open the page, for his mobile only */
       if (shell && window.matchMedia("(min-width: 900px)").matches && (builds.length || waiting.length)) setView("team");
       else location.href = "sent.html?mobile=" + encodeURIComponent(owner());
@@ -623,15 +626,15 @@
   async function sendFiles(files) {
     const at = F.at, step = at === "contacts" ? "people" : at === "products" ? "items" : "finish";
     if (NO_PHOTO_STEPS.indexOf(at) >= 0 && files.some(isPhoto)) {
-      await say([FLOW.txt("📷 Photo abhi nahi le sakte 🙏 Excel, PDF ya CSV file bhejiye — ya *Baad mein* dabaiye.",
-        { buttons: [{ id: "ans:" + (at === "products" ? "later" : "skip"), label: "Baad mein" }] })]);
+      await say([FLOW.txt("📷 Photo अभी नहीं ले सकते 🙏 Excel, PDF या CSV file भेजिए — या *बाद में* दबाइए।",
+        { buttons: [{ id: "ans:" + (at === "products" ? "later" : "skip"), label: "बाद में" }] })]);
       files = files.filter(function (f) { return !isPhoto(f); });
       if (!files.length) return;
     }
     const papers = [], list = [];
     for (const f of files) {
       const p = await OB.take(X, M, null, S, f, step);   // kept as it came, uploaded to S3
-      if (!p || p.error) { mine({ kind: "file", name: f.name, size: f.size }); await say([FLOW.txt("⚠️ " + f.name + " bahut badi hai (40 MB se zyada). Chhoti file bhejiye.")]); continue; }
+      if (!p || p.error) { mine({ kind: "file", name: f.name, size: f.size }); await say([FLOW.txt("⚠️ " + f.name + " बहुत बड़ी है (40 MB से ज़्यादा)। छोटी file भेजिए।")]); continue; }
       p.peek = await peekOf(f);
       if (at === "contacts") {   // the one reading left in the browser: names and numbers for "Who is who"
         try { const r = await IMP.readFile(f.name, new Uint8Array(await f.arrayBuffer())); const ppl = r.people || []; if (ppl.length) { p.found = ppl.length; ppl.forEach(function (x) { list.push(x); }); } } catch (e) { /* not a list */ }
@@ -643,12 +646,12 @@
     if (!papers.length) return;
     if (at === "contacts") {
       const unread = papers.filter(function (p) { return !p.found; });
-      if (!list.length) return say([FLOW.txt("✅ File mil gayi! Store banate time isme se customers, suppliers aur staff add kar denge.", { buttons: [{ id: "ans:done", label: "Ho gaya" }, { id: "ans:more", label: "Aur file bhejiye" }] })]);
-      if (unread.length) await say([FLOW.txt("✅ " + unread.map(function (p) { return p.name; }).join(", ") + " mil gayi — store banate time padh lenge.")]);
+      if (!list.length) return say([FLOW.txt("✅ File मिल गई! Store बनाते time इसमें से customers, suppliers और staff add कर देंगे।", { buttons: [{ id: "ans:done", label: "हो गया" }, { id: "ans:more", label: "और file भेजिए" }] })]);
+      if (unread.length) await say([FLOW.txt("✅ " + unread.map(function (p) { return p.name; }).join(", ") + " मिल गई — store बनाते time पढ़ लेंगे।")]);
       return answer({ contacts: list, src: "file" });
     }
     if (at === "products") return answer({ papers: papers });
-    say([FLOW.txt("✅ File mil gayi! Store banate time padh lenge.")]);
+    say([FLOW.txt("✅ File मिल गई! Store बनाते time पढ़ लेंगे।")]);
   }
   function retryAll() {
     const todo = S.papers.filter(function (p) { return !/^audio\//.test(p.mime || "") && !p.fileId && p.up !== "unsupported"; });
@@ -685,15 +688,15 @@
       out = '<a data-paper="' + esc(p.id) + '" target="_blank" rel="noopener" class="cb-img"><img data-paper="' + esc(p.id) + '" alt="' + esc(p.name) + '" onerror="this.style.display=\'none\'" style="max-width:240px;width:100%;display:block"></a>' +
         '<span class="cb-txt"><small style="color:#667781">' + esc(m.name) + " · " + kb(m.size) + "</small></span>";   // the name stays when the browser cannot draw it (HEIC)
     } else if (p.found) {
-      out = '<span class="cb-doc">' + out + '<span class="cb-doc-more">📇 ' + p.found + " contacts found</span></span>";
+      out = '<span class="cb-doc">' + out + '<span class="cb-doc-more">📇 ' + p.found + " contacts मिले</span></span>";
     } else if (peek) {
       out = '<span class="cb-doc">' + out + '<span class="cb-doc-more"><table class="cb-peek">' + peek.rows.map(function (r, k) {
         return "<tr>" + r.map(function (c) { return (k ? "<td>" : "<th>") + esc(c) + (k ? "</td>" : "</th>"); }).join("") + "</tr>";
-      }).join("") + "</table>" + (peek.more ? "<small>…" + peek.more + " more rows</small>" : "") + "</span></span>";
+      }).join("") + "</table>" + (peek.more ? "<small>…और " + peek.more + " rows</small>" : "") + "</span></span>";
     } else out = '<span class="cb-doc">' + out + "</span>";
-    const up = p.up === "done" ? "✓ Upload ho gayi" : p.up === "uploading" ? "Upload ho rahi hai…" : p.up === "failed" ? "⚠ Upload nahi hui" : p.up === "unsupported" ? "⚠ Yeh file nahi chalegi. Excel, PDF ya CSV bhejiye." : "";
+    const up = p.up === "done" ? "✓ Upload हो गई" : p.up === "uploading" ? "Upload हो रही है…" : p.up === "failed" ? "⚠ Upload नहीं हुई" : p.up === "unsupported" ? "⚠ यह file नहीं चलेगी। Excel, PDF या CSV भेजिए।" : "";
     if (up) out += '<span class="cb-up is-' + esc(p.up) + '">' + (p.up === "uploading" ? '<i class="cb-up-bar"></i>' : "") + "<span>" + up + "</span>" +
-      (p.up === "failed" ? '<button type="button" class="cb-up-retry" data-retry="' + esc(p.id) + '">Phir se try</button>' : "") + "</span>";
+      (p.up === "failed" ? '<button type="button" class="cb-up-retry" data-retry="' + esc(p.id) + '">फिर से try</button>' : "") + "</span>";
     return out;
   }
 
@@ -701,9 +704,14 @@
   function widgetHTML(w, i) {
     if (!w) return "";
     if (w.type === "select") {
-      return '<div class="aw is-form"><div class="aw-row"><select aria-label="' + esc(w.label) + '"><option value="">' + esc(w.ph || "Choose") + "</option>" +
-        w.options.map(function (o) { return '<option value="' + esc(o.v) + '">' + esc(o.label) + "</option>"; }).join("") +
-        '</select><button type="button" class="aw-go" data-act="select" disabled>Send</button></div></div>';
+      return '<div class="aw is-form"><div class="aw-row"><select aria-label="' + esc(w.label) + '">' + (w.sel != null ? "" : '<option value="">' + esc(w.ph || "Choose") + "</option>") +
+        w.options.map(function (o) { return '<option value="' + esc(o.v) + '"' + (o.v === w.sel ? " selected" : "") + ">" + esc(o.label) + "</option>"; }).join("") +
+        '</select><button type="button" class="aw-go" data-act="select"' + (w.sel != null ? "" : " disabled") + ">Send</button></div></div>";
+    }
+    if (w.type === "input") {
+      return '<div class="aw is-form"><div class="aw-row"><input type="text" class="aw-in' + (w.upper ? " is-upper" : "") + '" aria-label="' + esc(w.label) + '" placeholder="' + esc(w.hint || "") + '"' +
+        (w.max ? ' maxlength="' + w.max + '"' : "") + (w.upper ? ' autocapitalize="characters"' : "") + ' autocomplete="off" enterkeyhint="send">' +
+        '<button type="button" class="aw-go" data-act="input" disabled>Send</button></div></div>';
     }
     if (w.type === "multi") {
       return '<div class="aw is-form"><div class="aw-ticks">' + w.options.map(function (o) {
@@ -712,8 +720,8 @@
     }
     if (w.type === "files") {
       /* v11 (R2): the contacts step gets a sample Excel — Name · Mobile · Type — whose Type column marks each person */
-      const sample = w.sample ? '<a class="aw-link" href="store/sample-contacts.xlsx" download="FoodBridge-sample-contacts.xlsx">⬇️ Sample Excel download kariye</a>' : "";
-      return '<div class="aw"><button type="button" class="aw-drop" data-act="attach">' + I.up + "<span><b>File bhejiye</b><small>Excel · PDF · CSV</small></span></button>" + sample + "</div>";
+      const sample = w.sample ? '<a class="aw-link" href="store/sample-contacts.xlsx" download="FoodBridge-sample-contacts.xlsx">⬇️ Sample Excel download करिए</a>' : "";
+      return '<div class="aw"><button type="button" class="aw-drop" data-act="attach">' + I.up + "<span><b>File भेजिए</b><small>Excel · PDF · CSV</small></span></button>" + sample + "</div>";
     }
     if (w.type === "products") {
       const rows = w.rows || [], show = rows.slice(0, 8);
@@ -724,26 +732,26 @@
         }).join("") + "</tbody></table>" + (rows.length > show.length ? '<div class="aw-more">…and ' + (rows.length - show.length) + " more</div>" : "") + "</div>";
     }
     if (w.type === "progress") {
-      const HEAD = { running: "Kaam chal raha hai…", waiting: "⏳ Thoda zyada time lag raha hai, kaam chal raha hai", team: "Baaki kaam FoodBridge team karegi", done: "Sab ho gaya 🎉" };
+      const HEAD = { running: "काम चल रहा है…", waiting: "⏳ थोड़ा ज़्यादा time लग रहा है, काम चल रहा है", team: "बाकी काम FoodBridge team करेगी", done: "सब हो गया 🎉" };
       const IC = { done: "✓", none: "–", running: "", todo: "", stopped: "‖" };
-      return '<div class="aw"><div class="aw-prog"><div class="pg-head"><img src="store/foodbridge-mark-green.png" alt=""><span><b>' + esc(w.name || "Aapka store") + " ban raha hai</b><small>" + esc(HEAD[w.state] || HEAD.running) + "</small></span></div>" +
+      return '<div class="aw"><div class="aw-prog"><div class="pg-head"><img src="store/foodbridge-mark-green.png" alt=""><span><b>' + esc(w.name || "आपका store") + " बन रहा है</b><small>" + esc(HEAD[w.state] || HEAD.running) + "</small></span></div>" +
         w.rows.map(function (r) {
-          const warn = r.notAdded.length ? '<span class="pg-warn">⚠️ Add nahi hue: ' + esc(r.notAdded.map(function (x) { return x.name + (x.why ? " — " + x.why : ""); }).join("; ")) + "</span>" : "";
+          const warn = r.notAdded.length ? '<span class="pg-warn">⚠️ Add नहीं हुए: ' + esc(r.notAdded.map(function (x) { return x.name + (x.why ? " — " + x.why : ""); }).join("; ")) + "</span>" : "";
           return '<div class="pg-row is-' + esc(r.state) + '"><span class="pg-ic" aria-hidden="true">' + (IC[r.state] || "") + '</span><span class="pg-lb"><b>' + r.icon + " " + esc(r.label) + "</b>" + (r.sub ? "<small>" + esc(r.sub) + "</small>" : "") + warn + "</span></div>";
         }).join("") +
-        (w.rows[0].state === "done" ? '<div class="pg-foot">' + md(w.state === "done" ? "🎉 *Sab ho gaya!* Aapka store poori tarah ready hai." : w.state === "team" ? "✅ *" + w.name + "* ready hai — login karke dekhiye." : w.ready) +
-          (w.link ? '<br><a class="pg-btn" href="' + esc(w.link) + '" target="_blank" rel="noopener">Store kholiye ↗</a>' : "") + "</div>" : "") + "</div></div>";
+        (w.rows[0].state === "done" ? '<div class="pg-foot">' + md(w.state === "done" ? "🎉 *सब हो गया!* आपका store पूरी तरह ready है।" : w.state === "team" ? "✅ *" + w.name + "* ready है — login करके देखिए।" : w.ready) +
+          (w.link ? '<br><a class="pg-btn" href="' + esc(w.link) + '" target="_blank" rel="noopener">Store खोलिए ↗</a>' : "") + "</div>" : "") + "</div></div>";
     }
     if (w.type === "summary") {
       const f = w.facts;
       const cell = function (n, l) { return "<div><b>" + n + "</b><small>" + esc(l) + "</small></div>"; };
-      return '<div class="aw"><div class="aw-store"><div class="st-head"><img src="store/foodbridge-mark-green.png" alt=""><span><b>' + esc(f.name || "Aapka store") + "</b><small>" +
+      return '<div class="aw"><div class="aw-store"><div class="st-head"><img src="store/foodbridge-mark-green.png" alt=""><span><b>' + esc(f.name || "आपका store") + "</b><small>" +
         esc([f.type, f.mobile].filter(Boolean).join(" · ")) + '</small></span></div><div class="st-grid">' +
         /* v10 (addendum-019): a product file is counted — never "0 products" when he sent one */
         (!f.products && f.productFiles ? cell("📄 " + f.productFiles, f.productFiles === 1 ? "product file" : "product files") : cell(f.products, f.productFiles ? "products + file" : "products")) + cell(f.customers, "customers") + cell(f.suppliers, "suppliers") +
-        cell(f.staff, "staff") + cell(f.answered + "/" + f.of, "roz ka kaam") + "</div></div></div>";
+        cell(f.staff, "staff") + cell(f.answered + "/" + f.of, "रोज़ का काम") + "</div></div></div>";
     }
-    if (w.type === "people") return '<div class="aw"><button type="button" class="aw-go is-quiet" data-act="sheetPeople">Sabko dekhiye (' + w.rows.length + ")</button></div>";
+    if (w.type === "people") return '<div class="aw"><button type="button" class="aw-go is-quiet" data-act="sheetPeople">सबको देखिए (' + w.rows.length + ")</button></div>";
     return "";
   }
 
@@ -751,7 +759,7 @@
     if (!open) return;
     if (VIEW !== "assistant") { renderSide(); return renderOther(); }
     root.classList.remove("is-readonly");
-    if (shell) head("mascot", "FoodBridge Assistant", isTyping ? "likh raha hai…" : "");
+    if (shell) head("mascot", "FoodBridge Assistant", isTyping ? "लिख रहा है…" : "");
     seen = msgs.length;
     renderSide(); renderInfo();
     let html = '<div class="cb-chip">Today</div>';
@@ -814,9 +822,9 @@
     }).join("") + "</div>");
   }
   function openMoreSheet() {
-    const rows = (builds.length || waiting.length ? [["sent", "FoodBridge ko bheja"]] : [])
-      .concat([["restart", "Naye se shuru"]])
-      .concat(window.FBFeedback ? [["feedback", "Feedback dijiye"]] : [])
+    const rows = (builds.length || waiting.length ? [["sent", "FoodBridge को भेजा"]] : [])
+      .concat([["restart", "नए से शुरू"]])
+      .concat(window.FBFeedback ? [["feedback", "Feedback दीजिए"]] : [])
       .concat(window.FB_RESET ? [["reset", "Reset everything (demo)"]] : []);   // discovery only: boot.js
     sheet("More", '<div class="cb-rows">' + rows.map(function (r) {
       return '<button type="button" class="cb-rowbtn" data-act="more" data-k="' + r[0] + '"><span class="cb-rt"><b>' + esc(r[1]) + "</b></span></button>";
@@ -826,13 +834,13 @@
   function openSheetFor(kind) {
     if (kind === "people") {
       const rows = S.order.map(function (id) { return S.people[id]; }).filter(Boolean);
-      sheet("Kaun customer, kaun supplier", '<div class="cb-rows">' + rows.map(function (p) {
+      sheet("कौन customer, कौन supplier", '<div class="cb-rows">' + rows.map(function (p) {
         const cur = p.type || M.guessType(p.name) || "";
         return '<div class="sf-row" data-id="' + esc(p.id) + '"><span class="sf-av">' + esc(avatar(p.name)) + '</span><span class="sf-who"><b>' + esc(p.name) + "</b><small>" + esc(M.phoneShow(p.phone)) + "</small></span>" +
           '<span class="sf-seg" role="radiogroup" aria-label="' + esc(p.name) + '">' + ["shop", "supplier", "staff", "none"].map(function (k) {
             return '<label><input type="radio" name="t-' + esc(p.id) + '" value="' + k + '"' + (cur === k ? " checked" : "") + ">" + FLOW.KIND[k] + "</label>";
           }).join("") + "</span></div>";
-      }).join("") + '</div><div class="sf-foot"><span class="sf-n">' + rows.length + ' contacts</span><button type="button" data-act="savePeople">Save kariye</button></div>', "is-form");
+      }).join("") + '</div><div class="sf-foot"><span class="sf-n">' + rows.length + ' contacts</span><button type="button" data-act="savePeople">Save करिए</button></div>', "is-form");
     }
     if (kind === "products" && F.prod) {
       sheet("Products", '<div class="cb-rows pf-wrap"><table class="pf"><thead><tr><th></th><th>Product</th><th>Pack</th><th>MRP ₹</th><th>Rate ₹</th></tr></thead><tbody>' +
@@ -870,7 +878,7 @@
       '<aside class="wa-side" aria-label="Chats">' +
         '<header class="wa-sh"><h1><img src="store/foodbridge-mark-green.png" alt="">FoodBridge</h1></header>' +
         '<div class="wa-list" id="wa-list" role="listbox"></div>' +
-        (window.FBFeedback ? '<button type="button" class="wa-fb" data-feedback>' + I.chats + "Give feedback</button>" : "") +
+        (window.FBFeedback ? '<button type="button" class="wa-fb" data-feedback>' + I.chats + "Feedback दीजिए</button>" : "") +
       "</aside>" +
       '<div class="wa-main"></div>' +
       '<aside class="wa-info" id="wa-info" hidden aria-label="Your store setup"></aside>';
@@ -882,7 +890,7 @@
       if (e.target.closest("[data-feedback]")) return window.FBFeedback.open();
       if (e.target.closest("[data-info-close]")) return toggleInfo(false);
       const a = e.target.closest("[data-info-act]");
-      if (a && a.dataset.infoAct === "restart") { toggleInfo(false); setView("assistant"); mine("Naye se shuru"); return restart(); }
+      if (a && a.dataset.infoAct === "restart") { toggleInfo(false); setView("assistant"); mine("नए से शुरू"); return restart(); }
       if (a && a.dataset.infoAct === "carry") { toggleInfo(false); setView("assistant"); return press("intent:carry", "Continue"); }
     });
   }
@@ -897,8 +905,8 @@
     if (!m) return "";
     if (m.kind === "image" || m.kind === "sticker") return m.text ? strip(m.text) : "🙂 Sticker";
     if (m.kind === "file") return "📎 " + m.name;
-    if (m.widget && m.widget.type === "summary") return "🏪 Your store";
-    if (m.widget && m.widget.type === "progress") return m.widget.state === "done" ? "🎉 All done! Your store is fully set up." : "🛠️ Setting up " + (m.widget.name || "your store");
+    if (m.widget && m.widget.type === "summary") return "🏪 आपका store";
+    if (m.widget && m.widget.type === "progress") return m.widget.state === "done" ? "🎉 सब हो गया! आपका store ready है।" : "🛠️ " + (m.widget.name || "आपका store") + " बन रहा है";
     return strip(m.text || (m.list ? m.list.title : ""));
   }
   function strip(t) { return String(t || "").replace(/[*_]/g, "").replace(/\s+/g, " ").trim(); }
@@ -925,14 +933,14 @@
         time: last ? day(last.at) : "", prev: isTyping ? "typing…" : last ? preview(last) : "" },
       (b0 || w0) && { view: "team", name: "FoodBridge Team", av: '<span class="wa-av is-logo"><img src="store/foodbridge-mark-green.png" alt=""></span>',
         time: w0 ? day(w0.at) : day(Date.parse((b0.meta || {}).received || (b0.meta || {}).at)),
-        prev: w0 ? "🕓 Waiting to send" : "📦 Received · " + countsLine(b0.meta) },
+        prev: w0 ? "🕓 भेजना बाकी है" : "📦 मिल गया · " + countsLine(b0.meta) },
     ].filter(Boolean);
     if (VIEW !== "assistant" && !rows.some(function (r) { return r.view === VIEW; })) { VIEW = "assistant"; setTimeout(render, 0); }   // its chat went (Start again, another owner)
     $("#wa-list", shell).innerHTML = rows.map(rowHTML).join("");
   }
   /* v10 (addendum-019): a product file is counted — never "0 products" when he sent one */
   function productsWord(c) { return !c.products && c.productFiles ? c.productFiles + (c.productFiles === 1 ? " product file" : " product files") : c.products + " products"; }
-  function countsLine(m) { const c = (m && m.counts) || {}; return [productsWord(c), c.customers + " customers"].join(", "); }
+  function countsLine(m) { const c = (m && m.counts) || {}; return [productsWord(c), c.customers + (c.customers === 1 ? " customer" : " customers")].join(", "); }
   /* His builds: what reached FoodBridge under his mobile (/api/mystores), and what still waits in this
      browser to be sent (the outbox of builds). Nobody identified → nothing. */
   let loadSeq = 0;
@@ -964,7 +972,7 @@
     status.textContent = sub;
   }
   /* v7 (D-3): the request's ticket step (the Business Panel's), and a discovery stand-in for the team that moves it. */
-  const STEPS = [["new", "Bheja gaya"], ["inReview", "Check ho raha hai"], ["setUp", "Ban raha hai"], ["ready", "Ready"]];
+  const STEPS = [["new", "भेजा गया"], ["inReview", "Check हो रहा है"], ["setUp", "बन रहा है"], ["ready", "Ready"]];
   function stepsHTML(b) {
     const at = Math.max(0, STEPS.findIndex(function (x) { return x[0] === b.status; }));
     return '<ol class="ro-steps">' + STEPS.map(function (x, i) { return '<li class="' + (i < at ? "is-done" : i === at ? "is-now" : "") + (x[0] === "ready" && i === at ? " is-ready" : "") + '">' + esc(x[1]) + "</li>"; }).join("") + "</ol>" +
@@ -972,20 +980,20 @@
   }
   function renderOther() {
     root.classList.add("is-readonly");
-    let html = '<div class="cb-chip">FoodBridge ko bheja</div>';
+    let html = '<div class="cb-chip">FoodBridge को भेजा</div>';
     head("logo", "FoodBridge Team", "");
-    $(".wa-ro", root).innerHTML = I.lock + "<span>Read-only</span>";
+    $(".wa-ro", root).innerHTML = I.lock + "<span>सिर्फ़ देखने के लिए</span>";
     waiting.forEach(function (b) {
       html += '<div class="cb-row out cb-tail"><div class="cb-grp is-wide"><div class="cb-bub"><span class="cb-txt">' +
-        md("🕓 *Waiting to send* — " + b.sent + "/" + b.total + " files") +
+        md("🕓 *भेजना बाकी है* — " + b.sent + "/" + b.total + " files") +
         '</span><span class="cb-time"><span class="ro-held">' + I.clock + "</span>" + day(b.at) + "</span></div></div></div>";
     });
     builds.slice().reverse().forEach(function (b) {
       const m = b.meta || {}, c = m.counts || {};
       html += '<div class="cb-row in cb-tail"><div class="cb-grp is-wide"><div class="cb-bub"><span class="cb-txt">' +
-        md("📦 *Received*" + (m.shop ? " — " + m.shop : "") + "\n" +
-          [productsWord(c), c.customers + " customers", c.suppliers + " suppliers", c.staff + " staff", c.answered + "/6 daily work", c.photos + " files"].join(" · ") +
-          (c.gaps ? "\nTo follow up: " + c.gaps : "")) + "</span>" +
+        md("📦 *मिल गया*" + (m.shop ? " — " + m.shop : "") + "\n" +
+          [productsWord(c), c.customers + (c.customers === 1 ? " customer" : " customers"), c.suppliers + (c.suppliers === 1 ? " supplier" : " suppliers"), c.staff + " staff", c.answered + "/6 रोज़ का काम", c.photos + " files"].join(" · ") +
+          (c.gaps ? "\nबाद में देखना: " + c.gaps : "")) + "</span>" +
         '<span class="cb-time">' + day(Date.parse(m.received || m.at)) + "</span>" + stepsHTML(b) +
         '<div class="ro-files">' + (b.files || []).map(function (f) { const nm = f.name || f; return '<button type="button" data-file="' + esc(nm) + '" data-id="' + esc(b.id) + '">' + I.doc + esc(nm) + "</button>"; }).join("") + "</div>" +
         "</div></div></div>";
@@ -1008,25 +1016,25 @@
     if (!infoOpen) return;
     const f = FLOW.facts(ctx()), P = M.progress(CAT, S);
     const steps = [
-      ["Mobile aur dukaan", M.storeReady(S) && !!S.store.name, [S.store.name, S.store.mobile].filter(Boolean).join(" · ")],
+      ["Mobile और दुकान", M.storeReady(S) && !!S.store.name, [S.store.name, S.store.mobile].filter(Boolean).join(" · ")],
       ["Business", !!(f.type), f.type || ""],
-      ["Roz ka kaam", P.rules.n === M.RULES_N, P.rules.n + "/" + M.RULES_N],
+      ["रोज़ का काम", P.rules.n === M.RULES_N, P.rules.n + "/" + M.RULES_N],
       ["Products", f.products > 0 || f.productFiles > 0, f.products ? f.products + " products" : f.productFiles ? f.productFiles + " file" : ""],
       ["Customers, suppliers, staff", S.order.length > 0 && !f.unsorted, f.customers + f.suppliers + f.staff ? f.customers + " customers · " + f.suppliers + " suppliers · " + f.staff + " staff" : ""],
       ["Bheja", !!F.built, ""],
       ["Store ready", isReady(), ""],
     ];
     const done = steps.filter(function (x) { return x[1]; }).length, nowAt = steps.findIndex(function (x) { return !x[1]; });
-    const action = F.at && F.at !== "done" ? '<button type="button" class="wi-act is-plain" data-info-act="carry">' + I.chats + "Continue</button>" : "";
-    box.innerHTML = '<header class="wi-h"><button type="button" class="wa-ib" data-info-close aria-label="Close">' + I.close + "</button>Aapka store setup</header>" +
+    const action = F.at && F.at !== "done" ? '<button type="button" class="wi-act is-plain" data-info-act="carry">' + I.chats + "Aage badhiye</button>" : "";
+    box.innerHTML = '<header class="wi-h"><button type="button" class="wa-ib" data-info-close aria-label="Close">' + I.close + "</button>आपका store setup</header>" +
       '<div class="wi-b">' +
-        '<div class="wi-card"><p class="wi-k">' + done + "/" + steps.length + " ho gaye</p>" +
+        '<div class="wi-card"><p class="wi-k">' + done + "/" + steps.length + " हो गए</p>" +
           '<div class="wi-bar"><i style="width:' + Math.round(done / steps.length * 100) + '%"></i></div><ul class="wi-steps">' +
           steps.map(function (x, i) {
             return '<li class="' + (x[1] ? "is-done" : i === nowAt ? "is-now" : "") + '"><span class="d">' + (x[1] ? I.check : "") + "</span><span>" + esc(x[0]) + (x[2] ? "<br><small>" + esc(x[2]) + "</small>" : "") + "</span></li>";
           }).join("") + "</ul></div>" +
         action +
-        '<button type="button" class="wi-act" data-info-act="restart">' + I.trash + "Naye se shuru</button>" +
+        '<button type="button" class="wi-act" data-info-act="restart">' + I.trash + "नए से शुरू</button>" +
       "</div>";
   }
 
